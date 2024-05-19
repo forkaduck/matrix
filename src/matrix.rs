@@ -1,16 +1,18 @@
+use matrix_macro::matrix_new;
+use std::ops;
+
+pub mod test;
+
 struct Matrix<T> {
-    pub data: Vec<T>,
+    pub data: T,
 }
 
-#[cfg(test)]
-mod matrix_tests {
-    use crate::matrix::Matrix;
-    use matrix_macro::matrix_new;
+impl<T> ops::Add<Matrix<Vec<Vec<T>>>> for Matrix<Vec<Vec<T>>> {
+    type Output = Matrix<Vec<Vec<T>>>;
 
-    #[test]
-    fn basic() {
-        let mut test = matrix_new!(f64; 1);
+    fn add(self, rhs: Matrix<Vec<Vec<T>>>) -> Matrix<Vec<Vec<T>>> {
+        let temp = matrix_new!(T; 2);
 
-        test.data.push(1.0);
+        temp
     }
 }
