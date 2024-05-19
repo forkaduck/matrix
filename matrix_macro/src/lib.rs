@@ -21,18 +21,16 @@ pub fn matrix_new(input: TokenStream) -> TokenStream {
         .parse::<usize>()
         .expect("Dimension is not a number");
 
-    if m_dimensions < 1 {
-        panic!("Matricies with 0 dimensions are not allowed");
-    }
+    let m_dimensions = m_dimensions - 1;
 
     // Generate the nested vectors.
     let mut inner_data = String::new();
-    for _ in 0..(m_dimensions - 1) {
+    for _ in 0..(m_dimensions) {
         inner_data.push_str("Vec<");
     }
     inner_data.push_str(m_type);
 
-    for _ in 0..(m_dimensions - 1) {
+    for _ in 0..(m_dimensions) {
         inner_data.push('>');
     }
 
