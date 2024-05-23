@@ -2,7 +2,9 @@ use ocl::{
     builders::{ProQueBuilder, ProgramBuilder},
     ProQue,
 };
-use std::{ffi::OsStr, fs, path::Path};
+use std::ffi::OsStr;
+use std::fs;
+use std::path::Path;
 
 pub struct KernelLoader {
     pub proque: ProQue,

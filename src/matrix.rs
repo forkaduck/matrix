@@ -1,38 +1,49 @@
-use matrix_macro::matrix_new;
+use std::fmt::Display;
 use std::ops;
 
 pub mod test;
 
-#[derive(Debug, Clone)]
-struct Matrix<T> {
+#[derive(Clone)]
+pub struct Matrix<'a, T> {
     pub data: T,
+    pub loader: &'a crate::loader::KernelLoader,
 }
 
-impl<'a, 'b, T: ocl::OclPrm> ops::Add<&'b Matrix<Vec<T>>> for &'a Matrix<Vec<T>> {
-    type Output = Matrix<Vec<T>>;
+impl<T> Display for Matrix<'_, Vec<T>>
+where
+    T: std::fmt::Display + std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut temp = Vec::new();
+        for i in &self.data {
+            temp.push(i);
+        }
+        write!(f, "{:?}", temp)
+    }
+}
 
-    fn add(self, rhs: &Matrix<Vec<T>>) -> Self::Output {
+impl<'r, 'l, T> ops::Add<&'r Matrix<'_, Vec<T>>> for &'l Matrix<'_, Vec<T>>
+where
+    T: ocl::OclPrm,
+{
+    type Output = Matrix<'l, Vec<T>>;
+
+    fn add(self, rhs: &'r Matrix<Vec<T>>) -> Self::Output {
         if self.data.len() != rhs.data.len() {
             panic!("Both operators have to have the same size");
         }
 
-        use crate::loader::KernelLoader;
-        use std::path::PathBuf;
-
-        let mut loader = KernelLoader::new(&PathBuf::from("./kernels"));
-
-        loader.proque.set_dims(1 << 20);
-
         // Buffers
-        let buffer_rhs = loader.proque.create_buffer::<T>().unwrap();
-        let buffer_lhs = loader.proque.create_buffer::<T>().unwrap();
-        let buffer_output = loader.proque.create_buffer::<T>().unwrap();
+        let buffer_rhs = self.loader.proque.create_buffer::<T>().unwrap();
+        let buffer_lhs = self.loader.proque.create_buffer::<T>().unwrap();
+        let buffer_output = self.loader.proque.create_buffer::<T>().unwrap();
 
         buffer_rhs.write(&rhs.data).enq().unwrap();
         buffer_lhs.write(&self.data).enq().unwrap();
 
         // Build the kernel
-        let kernel = match loader
+        let kernel = match self
+            .loader
             .proque
             .kernel_builder("add")
             .arg(&buffer_rhs)
@@ -54,7 +65,7 @@ impl<'a, 'b, T: ocl::OclPrm> ops::Add<&'b Matrix<Vec<T>>> for &'a Matrix<Vec<T>>
         }
 
         // Get results
-        let mut rv = matrix_new!(T; 1);
+        let mut rv = matrix_macro::matrix_new!(self.loader, T, 1);
 
         for _ in 0..self.data.len() {
             rv.data.push(T::default());
