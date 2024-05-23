@@ -8,7 +8,7 @@ mod matrix_tests {
     use std::path::PathBuf;
 
     #[test]
-    fn add_2d() {
+    fn vec_ops() {
         SimpleLogger::new().init().unwrap();
 
         let mut loader = KernelLoader::new::<f32>(&PathBuf::from("./kernels"));
@@ -28,7 +28,7 @@ mod matrix_tests {
 
         println!("{}", output);
 
-        let output = &output + &one;
+        let output = &one - &two;
 
         println!("{}", output);
     }

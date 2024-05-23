@@ -22,13 +22,12 @@ where
     }
 }
 
-impl<'r, 'l, T> ops::Add<&'r Matrix<'_, Vec<T>>> for &'l Matrix<'_, Vec<T>>
+impl<'r, 'l, T> Matrix<'r, Vec<T>>
 where
     T: ocl::OclPrm,
+    'r: 'l,
 {
-    type Output = Matrix<'l, Vec<T>>;
-
-    fn add(self, rhs: &'r Matrix<Vec<T>>) -> Self::Output {
+    fn vec_op(&self, rhs: &'r Matrix<Vec<T>>, kernel_name: &str) -> Matrix<'l, Vec<T>> {
         if self.data.len() != rhs.data.len() {
             panic!("Both operators have to have the same size");
         }
@@ -45,7 +44,7 @@ where
         let kernel = match self
             .loader
             .proque
-            .kernel_builder("add")
+            .kernel_builder(kernel_name)
             .arg(&buffer_rhs)
             .arg(buffer_rhs.len() as u64)
             .arg(&buffer_lhs)
@@ -74,5 +73,29 @@ where
         buffer_output.read(&mut rv.data).enq().unwrap();
 
         rv
+    }
+}
+
+impl<'r, 'l, T> ops::Add<&'r Matrix<'_, Vec<T>>> for &'l Matrix<'_, Vec<T>>
+where
+    T: ocl::OclPrm,
+    'r: 'l,
+{
+    type Output = Matrix<'l, Vec<T>>;
+
+    fn add(self, rhs: &'r Matrix<Vec<T>>) -> Self::Output {
+        self.vec_op(rhs, "add")
+    }
+}
+
+impl<'r, 'l, T> ops::Sub<&'r Matrix<'_, Vec<T>>> for &'l Matrix<'_, Vec<T>>
+where
+    T: ocl::OclPrm,
+    'r: 'l,
+{
+    type Output = Matrix<'l, Vec<T>>;
+
+    fn sub(self, rhs: &'r Matrix<Vec<T>>) -> Self::Output {
+        self.vec_op(rhs, "sub")
     }
 }

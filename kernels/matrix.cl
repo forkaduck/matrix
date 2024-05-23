@@ -12,8 +12,16 @@ __kernel void add(__constant FLOAT_T *rhs, SIZE_T w_rhs,
 		  __constant FLOAT_T *lhs, SIZE_T w_lhs,
 		  __global FLOAT_T *output)
 {
-	// Calculate the sum of two Vectors.
 	for (size_t i = 0; i < min(w_rhs, w_lhs); i++) {
 		output[i] = lhs[i] + rhs[i];
+	}
+}
+
+__kernel void sub(__constant FLOAT_T *rhs, SIZE_T w_rhs,
+		  __constant FLOAT_T *lhs, SIZE_T w_lhs,
+		  __global FLOAT_T *output)
+{
+	for (size_t i = 0; i < min(w_rhs, w_lhs); i++) {
+		output[i] = lhs[i] - rhs[i];
 	}
 }
