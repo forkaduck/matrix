@@ -11,7 +11,7 @@ mod matrix_tests {
     fn add_2d() {
         SimpleLogger::new().init().unwrap();
 
-        let mut loader = KernelLoader::new(&PathBuf::from("./kernels"));
+        let mut loader = KernelLoader::new::<f32>(&PathBuf::from("./kernels"));
         loader.proque.set_dims(1 << 10);
 
         let mut one = matrix_new!(&loader, f32, 1);

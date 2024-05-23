@@ -3,6 +3,7 @@ use ocl::{
     builders::{ProQueBuilder, ProgramBuilder},
     ProQue,
 };
+use std::any::TypeId;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
@@ -12,7 +13,7 @@ pub struct KernelLoader {
 }
 
 impl KernelLoader {
-    pub fn new(kernel_dir: &Path) -> Self {
+    pub fn new<T: 'static>(kernel_dir: &Path) -> Self {
         let mut proque = ProQueBuilder::new();
         let mut src: Vec<String> = Vec::new();
 
@@ -36,10 +37,31 @@ impl KernelLoader {
             panic!("No source files to compile!");
         }
 
+        // Dynamically adjust types of kernels.
+        let src_prefix = {
+            use std::collections::HashMap;
+
+            let map: HashMap<TypeId, &str> = [
+                (TypeId::of::<f32>(), "float"),
+                (TypeId::of::<f64>(), "double"),
+            ]
+            .into();
+
+            match map.get(&TypeId::of::<T>()) {
+                Some(a) => {
+                    format!("#define FLOAT_T {}", a)
+                }
+                None => {
+                    panic!("Invalid type!");
+                }
+            }
+        };
+
         // Add the source to the program and compile.
         let mut prog_build = ProgramBuilder::new();
-        for i in src {
-            prog_build.source(i);
+        for i in &mut src {
+            i.insert_str(0, &src_prefix);
+            prog_build.source(i.clone());
         }
 
         let proque = match proque.prog_bldr(prog_build).build() {
