@@ -23,7 +23,11 @@ mod matrix_tests {
 
         println!("{:?}\n{:?}", one, two);
 
-        let output = one + two;
+        let output = &one + &two;
+
+        println!("{:?}", output);
+
+        let output = &output + &one;
 
         println!("{:?}", output);
     }
