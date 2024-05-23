@@ -1,3 +1,4 @@
+use log::error;
 use ocl::{
     builders::{ProQueBuilder, ProgramBuilder},
     ProQue,
@@ -44,7 +45,7 @@ impl KernelLoader {
         let proque = match proque.prog_bldr(prog_build).build() {
             Ok(a) => a,
             Err(e) => {
-                println!("OpenCL Kernel Compile Error: {}", e);
+                error!("OpenCL Kernel Compile Error: {}", e);
                 panic!();
             }
         };

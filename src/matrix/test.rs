@@ -4,12 +4,15 @@ mod matrix_tests {
     use crate::matrix::Matrix;
     use matrix_macro::matrix_new;
     use rand::{prelude::*, thread_rng};
+    use simple_logger::SimpleLogger;
     use std::path::PathBuf;
 
     #[test]
     fn add_2d() {
+        SimpleLogger::new().init().unwrap();
+
         let mut loader = KernelLoader::new(&PathBuf::from("./kernels"));
-        loader.proque.set_dims(1 << 20);
+        loader.proque.set_dims(1 << 10);
 
         let mut one = matrix_new!(&loader, f32, 1);
         let mut two = matrix_new!(&loader, f32, 1);
