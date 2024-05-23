@@ -47,9 +47,9 @@ where
             .proque
             .kernel_builder("add")
             .arg(&buffer_rhs)
-            .arg(buffer_rhs.len() as u32)
+            .arg(buffer_rhs.len() as u64)
             .arg(&buffer_lhs)
-            .arg(buffer_lhs.len() as u32)
+            .arg(buffer_lhs.len() as u64)
             .arg(&buffer_output)
             .build()
         {
