@@ -1,4 +1,3 @@
-use log::error;
 use ocl::{
     builders::{ProQueBuilder, ProgramBuilder},
     ProQue,
@@ -6,19 +5,35 @@ use ocl::{
 use std::any::TypeId;
 use std::ffi::OsStr;
 use std::fs;
+use std::io;
 use std::path::Path;
+
+#[derive(Debug)]
+pub enum KernelLoaderEr {
+    UnsupportedType,
+    SrcDirError(io::Error),
+    SrcReadError(io::Error),
+    SrcDirEmpty,
+}
 
 pub struct KernelLoader {
     pub proque: ProQue,
 }
 
 impl KernelLoader {
-    pub fn new<T: 'static>(kernel_dir: &Path) -> Self {
+    pub fn new<T: 'static>(kernel_dir: &Path) -> Result<Self, KernelLoaderEr> {
         let mut proque = ProQueBuilder::new();
         let mut src: Vec<String> = Vec::new();
 
         // Read all file contents into a vec.
-        for entry in fs::read_dir(kernel_dir).expect("read source directory") {
+        let directory_entries = match fs::read_dir(kernel_dir) {
+            Ok(a) => a,
+            Err(e) => {
+                return Err(KernelLoaderEr::SrcDirError(e));
+            }
+        };
+
+        for entry in directory_entries {
             if let Ok(entry) = entry {
                 let path = entry.path();
                 let e_type = entry.file_type().expect("get file type");
@@ -28,13 +43,20 @@ impl KernelLoader {
                     .expect("get file extension");
 
                 if e_type.is_file() && e_extension == "cl" {
-                    src.push(fs::read_to_string(path).expect("read source file"));
+                    let file = match fs::read_to_string(path) {
+                        Ok(a) => a,
+                        Err(e) => {
+                            return Err(KernelLoaderEr::SrcReadError(e));
+                        }
+                    };
+
+                    src.push(file);
                 }
             }
         }
 
         if src.is_empty() {
-            panic!("No source files to compile!");
+            return Err(KernelLoaderEr::SrcDirEmpty);
         }
 
         // Dynamically adjust types of kernels.
@@ -52,7 +74,7 @@ impl KernelLoader {
                     format!("#define FLOAT_T {}", a)
                 }
                 None => {
-                    panic!("Invalid type!");
+                    return Err(KernelLoaderEr::UnsupportedType);
                 }
             }
         };
@@ -67,11 +89,10 @@ impl KernelLoader {
         let proque = match proque.prog_bldr(prog_build).build() {
             Ok(a) => a,
             Err(e) => {
-                error!("OpenCL Kernel Compile Error: {}", e);
-                panic!();
+                panic!("{}", e);
             }
         };
 
-        KernelLoader { proque }
+        Ok(KernelLoader { proque })
     }
 }

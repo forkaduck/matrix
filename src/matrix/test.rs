@@ -11,7 +11,7 @@ mod matrix_tests {
     fn vec_ops() {
         SimpleLogger::new().init().unwrap();
 
-        let mut loader = KernelLoader::new::<f32>(&PathBuf::from("./kernels"));
+        let mut loader = KernelLoader::new::<f32>(&PathBuf::from("./kernels")).unwrap();
         loader.proque.set_dims(1 << 10);
 
         let mut one = matrix_new!(&loader, f32, 1);
