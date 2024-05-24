@@ -56,6 +56,12 @@ pub struct KernelLoader {
 }
 
 impl KernelLoader {
+    /// Loads and compiles all kernels.
+    ///
+    /// On success, returns a new KernelLoader. The object can then be used to create
+    /// matrices using the matrix_new macro.
+    ///
+    /// * `kernel_dir` - The directory of all OpenCL C files (.cl).
     pub fn new<T: 'static>(kernel_dir: &Path) -> Result<Self, KernelLoaderEr> {
         let mut proque = ProQueBuilder::new();
         let mut src: Vec<String> = Vec::new();

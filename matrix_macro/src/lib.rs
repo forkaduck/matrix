@@ -1,6 +1,11 @@
 use proc_macro::TokenStream;
 use quote::quote;
 
+/// Creates a new matrix.
+///
+/// * `<1>` - A reference to the KernelLoader object.
+/// * `<2>` - The type that the matrix should contain.
+/// * `<3>` - The dimensionality.
 #[proc_macro]
 pub fn matrix_new(input: TokenStream) -> TokenStream {
     if input.is_empty() {
