@@ -33,12 +33,12 @@ where
         }
 
         // Buffers
-        let buffer_rhs = self.loader.proque.create_buffer::<T>().unwrap();
-        let buffer_lhs = self.loader.proque.create_buffer::<T>().unwrap();
-        let buffer_output = self.loader.proque.create_buffer::<T>().unwrap();
+        let buffer_rhs = self.loader.proque.create_buffer::<T>().expect("buffer rhs");
+        let buffer_lhs = self.loader.proque.create_buffer::<T>().expect("buffer lhs");
+        let buffer_output = self.loader.proque.create_buffer::<T>().expect("buffer out");
 
-        buffer_rhs.write(&rhs.data).enq().unwrap();
-        buffer_lhs.write(&self.data).enq().unwrap();
+        buffer_rhs.write(&rhs.data).enq().expect("write to rhs");
+        buffer_lhs.write(&self.data).enq().expect("write to lhs");
 
         // Build the kernel
         let kernel = match self
@@ -54,13 +54,12 @@ where
         {
             Ok(a) => a,
             Err(e) => {
-                println!("OpenCL Build Error: {}", e);
-                panic!();
+                panic!("{}", e);
             }
         };
 
         unsafe {
-            kernel.enq().unwrap();
+            kernel.enq().expect("kernel enque");
         }
 
         // Get results
@@ -70,8 +69,10 @@ where
             rv.data.push(T::default());
         }
 
-        buffer_output.read(&mut rv.data).enq().unwrap();
-
+        buffer_output
+            .read(&mut rv.data)
+            .enq()
+            .expect("read from out");
         rv
     }
 }
