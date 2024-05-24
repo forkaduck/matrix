@@ -65,12 +65,11 @@ where
         // Get results
         let mut rv = matrix_macro::matrix_new!(self.loader, T, 1);
 
-        for _ in 0..self.data.len() {
-            rv.data.push(T::default());
-        }
+        rv.data.resize(self.data.len(), T::default());
 
         buffer_output
             .read(&mut rv.data)
+            .len(self.data.len())
             .enq()
             .expect("read from out");
         rv

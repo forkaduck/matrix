@@ -3,10 +3,43 @@ use ocl::{
     ProQue,
 };
 use std::any::TypeId;
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::io;
 use std::path::Path;
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum TypeMap {
+    F32,
+    F64,
+}
+
+impl TypeMap {
+    fn c_str(&self) -> Option<&str> {
+        let map: HashMap<TypeMap, &str> =
+            [(TypeMap::F32, "float"), (TypeMap::F64, "double")].into();
+
+        map.get(self).copied()
+    }
+}
+
+impl TryFrom<&TypeId> for TypeMap {
+    type Error = ();
+
+    fn try_from(input: &TypeId) -> Result<Self, Self::Error> {
+        let map: HashMap<TypeId, TypeMap> = [
+            (TypeId::of::<f32>(), TypeMap::F32),
+            (TypeId::of::<f64>(), TypeMap::F64),
+        ]
+        .into();
+
+        match map.get(input) {
+            Some(a) => Ok(a.clone()),
+            None => Err(()),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum KernelLoaderEr {
@@ -16,14 +49,24 @@ pub enum KernelLoaderEr {
     SrcDirEmpty,
 }
 
+#[allow(dead_code)]
 pub struct KernelLoader {
     pub proque: ProQue,
+    matrix_type: TypeMap,
 }
 
 impl KernelLoader {
     pub fn new<T: 'static>(kernel_dir: &Path) -> Result<Self, KernelLoaderEr> {
         let mut proque = ProQueBuilder::new();
         let mut src: Vec<String> = Vec::new();
+
+        // Convert generic type to internal map of supported types.
+        let matrix_type = match TypeMap::try_from(&TypeId::of::<T>()) {
+            Ok(a) => a,
+            Err(_) => {
+                return Err(KernelLoaderEr::UnsupportedType);
+            }
+        };
 
         // Read all file contents into a vec.
         let directory_entries = match fs::read_dir(kernel_dir) {
@@ -61,15 +104,7 @@ impl KernelLoader {
 
         // Dynamically adjust types of kernels.
         let src_prefix = {
-            use std::collections::HashMap;
-
-            let map: HashMap<TypeId, &str> = [
-                (TypeId::of::<f32>(), "float"),
-                (TypeId::of::<f64>(), "double"),
-            ]
-            .into();
-
-            match map.get(&TypeId::of::<T>()) {
+            match matrix_type.c_str() {
                 Some(a) => {
                     format!("#define FLOAT_T {}", a)
                 }
@@ -93,6 +128,9 @@ impl KernelLoader {
             }
         };
 
-        Ok(KernelLoader { proque })
+        Ok(KernelLoader {
+            proque,
+            matrix_type,
+        })
     }
 }
