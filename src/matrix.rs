@@ -99,3 +99,27 @@ where
         self.vec_op(rhs, "sub")
     }
 }
+
+impl<'r, 'l, T> ops::Mul<&'r Matrix<'_, Vec<T>>> for &'l Matrix<'_, Vec<T>>
+where
+    T: ocl::OclPrm,
+    'r: 'l,
+{
+    type Output = Matrix<'l, Vec<T>>;
+
+    fn mul(self, rhs: &'r Matrix<Vec<T>>) -> Self::Output {
+        self.vec_op(rhs, "mul")
+    }
+}
+
+impl<'r, 'l, T> ops::Div<&'r Matrix<'_, Vec<T>>> for &'l Matrix<'_, Vec<T>>
+where
+    T: ocl::OclPrm,
+    'r: 'l,
+{
+    type Output = Matrix<'l, Vec<T>>;
+
+    fn div(self, rhs: &'r Matrix<Vec<T>>) -> Self::Output {
+        self.vec_op(rhs, "div")
+    }
+}

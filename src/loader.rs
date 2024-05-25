@@ -1,3 +1,4 @@
+use log::debug;
 use ocl::{
     builders::{ProQueBuilder, ProgramBuilder},
     ProQue,
@@ -8,6 +9,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io;
 use std::path::Path;
+use std::sync::OnceLock;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum TypeMap {
@@ -41,6 +43,12 @@ impl TryFrom<&TypeId> for TypeMap {
     }
 }
 
+struct KernelVariant<'a> {
+    pub name: &'a [&'a str],
+    pub operator: &'a [&'a str],
+    pub length: usize,
+}
+
 #[derive(Debug)]
 pub enum KernelLoaderEr {
     UnsupportedType,
@@ -56,6 +64,25 @@ pub struct KernelLoader {
 }
 
 impl KernelLoader {
+    fn get_variants() -> &'static HashMap<&'static str, KernelVariant<'static>> {
+        static MAP: OnceLock<HashMap<&str, KernelVariant<'static>>> = OnceLock::new();
+
+        MAP.get_or_init(|| {
+            let mut m = HashMap::new();
+
+            m.insert(
+                "matrix.cl",
+                KernelVariant {
+                    operator: &["+", "-", "*", "/"],
+                    name: &["add", "sub", "mul", "div"],
+                    length: 4,
+                },
+            );
+
+            m
+        })
+    }
+
     /// Loads and compiles all kernels.
     ///
     /// On success, returns a new KernelLoader. The object can then be used to create
@@ -64,7 +91,7 @@ impl KernelLoader {
     /// * `kernel_dir` - The directory of all OpenCL C files (.cl).
     pub fn new<T: 'static>(kernel_dir: &Path) -> Result<Self, KernelLoaderEr> {
         let mut proque = ProQueBuilder::new();
-        let mut src: Vec<String> = Vec::new();
+        let mut src: HashMap<String, String> = HashMap::new();
 
         // Convert generic type to internal map of supported types.
         let matrix_type = match TypeMap::try_from(&TypeId::of::<T>()) {
@@ -91,15 +118,21 @@ impl KernelLoader {
                     .and_then(OsStr::to_str)
                     .expect("get file extension");
 
+                let e_name = path
+                    .file_name()
+                    .expect("file name")
+                    .to_str()
+                    .expect("file name encoding");
+
                 if e_type.is_file() && e_extension == "cl" {
-                    let file = match fs::read_to_string(path) {
+                    let file = match fs::read_to_string(&path) {
                         Ok(a) => a,
                         Err(e) => {
                             return Err(KernelLoaderEr::SrcReadError(e));
                         }
                     };
 
-                    src.push(file);
+                    src.insert(e_name.to_owned(), file);
                 }
             }
         }
@@ -108,25 +141,54 @@ impl KernelLoader {
             return Err(KernelLoaderEr::SrcDirEmpty);
         }
 
+        debug!("Found {} source files", src.len());
+
+        let mut src_global_prefix = String::new();
+
         // Dynamically adjust types of kernels.
-        let src_prefix = {
-            match matrix_type.c_str() {
-                Some(a) => {
-                    format!("#define FLOAT_T {}", a)
-                }
-                None => {
-                    return Err(KernelLoaderEr::UnsupportedType);
-                }
+        match matrix_type.c_str() {
+            Some(a) => src_global_prefix.push_str(format!("#define FLOAT_T {}\n", a).as_str()),
+            None => {
+                return Err(KernelLoaderEr::UnsupportedType);
             }
         };
 
-        // Add the source to the program and compile.
         let mut prog_build = ProgramBuilder::new();
-        for i in &mut src {
-            i.insert_str(0, &src_prefix);
-            prog_build.source(i.clone());
+        for (idx, cs) in &mut src {
+            cs.insert_str(0, &src_global_prefix);
+
+            let current_variant = Self::get_variants().get(idx.as_str());
+
+            // Is the current kernel a generic one?
+            if cs.contains("OPERATOR")
+                && cs.contains("KERNEL_NAME")
+                && let Some(var) = current_variant
+            {
+                debug!("Found generic kernel in {}", idx);
+
+                for k in 0..var.length {
+                    let mut cs_local = cs.clone();
+
+                    cs_local
+                        .insert_str(0, format!("#define KERNEL_NAME {}\n", var.name[k]).as_str());
+                    cs_local.insert_str(
+                        0,
+                        format!("#define OPERATOR {}\n", var.operator[k]).as_str(),
+                    );
+
+                    // Is backwards because we insert at the top.
+                    cs_local.insert_str(0, "#undef KERNEL_NAME\n#undef OPERATOR\n");
+
+                    prog_build.source(cs_local.clone());
+                }
+            } else {
+                debug!("Found kernel in {}", idx);
+
+                prog_build.source(cs.clone());
+            }
         }
 
+        // Add the source to the program and compile.
         let proque = match proque.prog_bldr(prog_build).build() {
             Ok(a) => a,
             Err(e) => {
