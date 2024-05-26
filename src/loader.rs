@@ -71,7 +71,7 @@ impl KernelLoader {
             let mut m = HashMap::new();
 
             m.insert(
-                "matrix.cl",
+                "vec_arithmetic.cl",
                 KernelVariant {
                     operator: &["+", "-", "*", "/"],
                     name: &["add", "sub", "mul", "div"],
