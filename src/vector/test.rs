@@ -15,8 +15,8 @@ mod matrix_tests {
         let mut loader = KernelLoader::new::<f32>(&PathBuf::from("./kernels")).unwrap();
         loader.proque.set_dims(1 << 15);
 
-        let mut one = matrix_new!(&loader, f32, 1);
-        let mut two = matrix_new!(&loader, f32, 1);
+        let mut one = matrix_new!(&loader, f32, 1, 10);
+        let mut two = matrix_new!(&loader, f32, 1, 10);
 
         for _ in 0..10 {
             one.A.push(thread_rng().gen());

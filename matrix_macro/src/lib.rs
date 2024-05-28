@@ -12,7 +12,12 @@ pub fn matrix_new(input: TokenStream) -> TokenStream {
     let tokens = format!("{}", input).clone();
     let mut tokens = tokens.split(", ");
 
-    let syntax = ["matrix_new!(<loader>", ", <type>", ", <dims>) "];
+    let syntax = [
+        "matrix_new!(<loader>",
+        ", <type>",
+        ", <dims>",
+        ", |<pre-alloc>|)",
+    ];
 
     if input.is_empty() {
         panic!(
@@ -40,6 +45,8 @@ pub fn matrix_new(input: TokenStream) -> TokenStream {
 
     let t_dimensions = t_dimensions - 1;
 
+    let t_pre_alloc = tokens.next();
+
     // Generate the nested vectors.
     let mut inner_data = String::new();
     for _ in 0..(t_dimensions) {
@@ -51,6 +58,16 @@ pub fn matrix_new(input: TokenStream) -> TokenStream {
         inner_data.push('>');
     }
 
+    let function = match t_pre_alloc {
+        Some(a) => {
+            format!("with_capacity({})", a)
+        }
+        None => {
+            format!("new()")
+        }
+    };
+
+    // Parse strings to TokenStreams.
     let inner_data: proc_macro2::TokenStream = inner_data
         .parse()
         .expect("Failed to parse nested vector statement TokenStream");
@@ -58,8 +75,12 @@ pub fn matrix_new(input: TokenStream) -> TokenStream {
     let loader: proc_macro2::TokenStream =
         t_loader.parse().expect("Failed to parse loader reference");
 
+    let function: proc_macro2::TokenStream = function
+        .parse()
+        .expect("Failed to parse function TokenStream");
+
     let gen = quote! {
-        Matrix { A: Vec::<#inner_data>::new(), loader:#loader}
+        Matrix { A: Vec::<#inner_data>::#function, loader:#loader}
     };
     gen.into()
 }
