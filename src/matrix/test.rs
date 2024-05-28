@@ -19,8 +19,8 @@ mod matrix_tests {
         let mut two = matrix_new!(&loader, f32, 1);
 
         for _ in 0..10 {
-            one.data.push(thread_rng().gen());
-            two.data.push(thread_rng().gen());
+            one.A.push(thread_rng().gen());
+            two.A.push(thread_rng().gen());
         }
 
         info!("Input:");
@@ -30,29 +30,29 @@ mod matrix_tests {
         let output = &one + &two;
         info!("Add:\t{:?}", output);
 
-        for i in 0..output.data.len() {
-            assert_eq!(output.data[i] == one.data[i] + two.data[i], true);
+        for i in 0..output.A.len() {
+            assert_eq!(output.A[i] == one.A[i] + two.A[i], true);
         }
 
         let output = &one - &two;
         info!("Sub:\t{:?}", output);
 
-        for i in 0..output.data.len() {
-            assert_eq!(output.data[i] == one.data[i] - two.data[i], true);
+        for i in 0..output.A.len() {
+            assert_eq!(output.A[i] == one.A[i] - two.A[i], true);
         }
 
         let output = &one * &two;
         info!("Mult:\t{:?}", output);
 
-        for i in 0..output.data.len() {
-            assert_eq!(output.data[i] == one.data[i] * two.data[i], true);
+        for i in 0..output.A.len() {
+            assert_eq!(output.A[i] == one.A[i] * two.A[i], true);
         }
 
         let output = &one / &two;
         info!("Div:\t{:?}", output);
 
-        for i in 0..output.data.len() {
-            assert_eq!(output.data[i] == one.data[i] / two.data[i], true);
+        for i in 0..output.A.len() {
+            assert_eq!(output.A[i] == one.A[i] / two.A[i], true);
         }
     }
 }

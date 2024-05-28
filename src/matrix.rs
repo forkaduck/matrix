@@ -3,10 +3,11 @@ use std::ops;
 
 pub mod test;
 
+#[allow(non_snake_case)]
 #[derive(Clone)]
 pub struct Matrix<'a, T> {
-    pub data: T,
     pub loader: &'a crate::loader::KernelLoader,
+    pub A: T,
 }
 
 impl<T> Debug for Matrix<'_, Vec<T>>
@@ -15,7 +16,7 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut temp = Vec::new();
-        for i in &self.data {
+        for i in &self.A {
             temp.push(i);
         }
         write!(f, "{:?}", temp)
@@ -28,7 +29,7 @@ where
     'r: 'l,
 {
     fn vec_op(&self, rhs: &'r Matrix<Vec<T>>, kernel_name: &str) -> Matrix<'l, Vec<T>> {
-        if self.data.len() != rhs.data.len() {
+        if self.A.len() != rhs.A.len() {
             panic!("Both operators have to have the same size");
         }
 
@@ -37,8 +38,8 @@ where
         let buffer_lhs = self.loader.proque.create_buffer::<T>().expect("buffer lhs");
         let buffer_output = self.loader.proque.create_buffer::<T>().expect("buffer out");
 
-        buffer_rhs.write(&rhs.data).enq().expect("write to rhs");
-        buffer_lhs.write(&self.data).enq().expect("write to lhs");
+        buffer_rhs.write(&rhs.A).enq().expect("write to rhs");
+        buffer_lhs.write(&self.A).enq().expect("write to lhs");
 
         // Build the kernel
         let kernel = match self
@@ -65,11 +66,11 @@ where
         // Get results
         let mut rv = matrix_macro::matrix_new!(self.loader, T, 1);
 
-        rv.data.resize(self.data.len(), T::default());
+        rv.A.resize(self.A.len(), T::default());
 
         buffer_output
-            .read(&mut rv.data)
-            .len(self.data.len())
+            .read(&mut rv.A)
+            .len(self.A.len())
             .enq()
             .expect("read from out");
         rv

@@ -8,26 +8,35 @@ use quote::quote;
 /// * `<3>` - The dimensionality.
 #[proc_macro]
 pub fn matrix_new(input: TokenStream) -> TokenStream {
-    if input.is_empty() {
-        panic!("No input provided");
-    }
-
     // Get a string from the TokenStream.
     let tokens = format!("{}", input).clone();
     let mut tokens = tokens.split(", ");
 
+    let syntax = ["matrix_new!(<loader>", ", <type>", ", <dims>) "];
+
+    if input.is_empty() {
+        panic!(
+            "{}",
+            &(syntax[0].to_owned() + " <- Kernel struct not found!")
+        );
+    }
+
     // Fetch the loader reference from the input string.
-    let t_loader = tokens.next().expect("Kernel Loader struct not found");
+    let t_loader = tokens
+        .next()
+        .expect(&(syntax[0].to_owned() + " <- Kernel struct not found!"));
 
     // Retrieve the type of the matrix.
-    let t_type = tokens.next().expect("Type not found");
+    let t_type = tokens
+        .next()
+        .expect(&(syntax[0].to_owned() + syntax[1] + " <- Type not found!"));
 
     // Parse out the amount of dimensions.
     let t_dimensions = tokens
         .next()
-        .expect("Dimension not found")
+        .expect(&(syntax[0].to_owned() + syntax[1] + syntax[2] + " <- Dimension not found!"))
         .parse::<usize>()
-        .expect("Dimension is not a number");
+        .expect(&(syntax[0].to_owned() + syntax[1] + syntax[2] + " <- Dimension is not a usize!"));
 
     let t_dimensions = t_dimensions - 1;
 
@@ -50,7 +59,7 @@ pub fn matrix_new(input: TokenStream) -> TokenStream {
         t_loader.parse().expect("Failed to parse loader reference");
 
     let gen = quote! {
-        Matrix { data: Vec::<#inner_data>::new(), loader:#loader}
+        Matrix { A: Vec::<#inner_data>::new(), loader:#loader}
     };
     gen.into()
 }
