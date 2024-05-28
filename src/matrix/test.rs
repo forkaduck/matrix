@@ -24,32 +24,32 @@ mod matrix_tests {
         }
 
         info!("Input:");
-        info!("1: \t\t{}", one);
-        info!("2: \t\t{}", two);
+        info!("1: \t\t{:?}", one);
+        info!("2: \t\t{:?}", two);
 
         let output = &one + &two;
-        info!("Add:\t{}", output);
+        info!("Add:\t{:?}", output);
 
         for i in 0..output.data.len() {
             assert_eq!(output.data[i] == one.data[i] + two.data[i], true);
         }
 
         let output = &one - &two;
-        info!("Sub:\t{}", output);
+        info!("Sub:\t{:?}", output);
 
         for i in 0..output.data.len() {
             assert_eq!(output.data[i] == one.data[i] - two.data[i], true);
         }
 
         let output = &one * &two;
-        info!("Mult:\t{}", output);
+        info!("Mult:\t{:?}", output);
 
         for i in 0..output.data.len() {
             assert_eq!(output.data[i] == one.data[i] * two.data[i], true);
         }
 
         let output = &one / &two;
-        info!("Div:\t{}", output);
+        info!("Div:\t{:?}", output);
 
         for i in 0..output.data.len() {
             assert_eq!(output.data[i] == one.data[i] / two.data[i], true);

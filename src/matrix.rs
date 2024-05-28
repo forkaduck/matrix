@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::Debug;
 use std::ops;
 
 pub mod test;
@@ -9,9 +9,9 @@ pub struct Matrix<'a, T> {
     pub loader: &'a crate::loader::KernelLoader,
 }
 
-impl<T> Display for Matrix<'_, Vec<T>>
+impl<T> Debug for Matrix<'_, Vec<T>>
 where
-    T: std::fmt::Display + std::fmt::Debug,
+    T: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut temp = Vec::new();
