@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod matrix_tests {
     use crate::loader::KernelLoader;
-    use crate::matrix::Matrix;
+    use crate::Matrix;
     use log::info;
     use matrix_macro::matrix_new;
     use rand::{prelude::*, thread_rng};

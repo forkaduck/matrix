@@ -1,14 +1,9 @@
 use std::fmt::Debug;
 use std::ops;
 
-pub mod test;
+use crate::Matrix;
 
-#[allow(non_snake_case)]
-#[derive(Clone)]
-pub struct Matrix<'a, T> {
-    pub loader: &'a crate::loader::KernelLoader,
-    pub A: T,
-}
+pub mod test;
 
 impl<T> Debug for Matrix<'_, Vec<T>>
 where
