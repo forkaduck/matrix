@@ -4,13 +4,19 @@ mod matrix_tests {
     use crate::Matrix;
     use log::info;
     use matrix_macro::matrix_new;
-    use rand::{prelude::*, thread_rng};
-    use simple_logger::SimpleLogger;
+    use oorandom;
+    use simplelog::{ColorChoice, Config, LevelFilter, TermLogger, TerminalMode};
     use std::path::PathBuf;
 
     #[test]
     fn vec_ops() {
-        SimpleLogger::new().init().unwrap();
+        TermLogger::init(
+            LevelFilter::Debug,
+            Config::default(),
+            TerminalMode::Mixed,
+            ColorChoice::Auto,
+        )
+        .unwrap();
 
         let mut loader = KernelLoader::new::<f32>(&PathBuf::from("./kernels")).unwrap();
         loader.proque.set_dims(1 << 15);
@@ -18,14 +24,16 @@ mod matrix_tests {
         let mut one = matrix_new!(&loader, f32, 1, 10);
         let mut two = matrix_new!(&loader, f32, 1, 10);
 
+        let mut rng = oorandom::Rand64::new(10);
+
         for _ in 0..10 {
-            one.A.push(thread_rng().gen());
-            two.A.push(thread_rng().gen());
+            one.A.push(rng.rand_float() as f32);
+            two.A.push(rng.rand_float() as f32);
         }
 
         info!("Input:");
-        info!("1: \t\t{:?}", one);
-        info!("2: \t\t{:?}", two);
+        info!("1: \t{:?}", one);
+        info!("2: \t{:?}", two);
 
         let output = &one + &two;
         info!("Add:\t{:?}", output);
