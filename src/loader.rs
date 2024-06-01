@@ -1,7 +1,8 @@
 use log::debug;
 use ocl::{
     builders::{ProQueBuilder, ProgramBuilder},
-    ProQue,
+    enums::{DeviceInfo, DeviceInfoResult},
+    Device, Platform, ProQue,
 };
 use std::any::TypeId;
 use std::collections::HashMap;
@@ -55,6 +56,7 @@ pub enum KernelLoaderEr {
     SrcDirError(io::Error),
     SrcReadError(io::Error),
     SrcDirEmpty,
+    PlatformError(ocl::error::Error),
 }
 
 #[allow(dead_code)]
@@ -188,8 +190,60 @@ impl KernelLoader {
             }
         }
 
+        let mut device_list: HashMap<u64, (Platform, Device)> = HashMap::new();
+
+        for pl in Platform::list() {
+            match Device::list(pl, None) {
+                Ok(a) => {
+                    for dev in a {
+                        let mut pref: u64 = 1;
+
+                        if let DeviceInfoResult::MaxWorkGroupSize(temp) = dev
+                            .info(DeviceInfo::MaxWorkGroupSize)
+                            .expect("no MaxWorkGroupSize")
+                        {
+                            pref *= temp as u64;
+                        }
+
+                        if let DeviceInfoResult::MaxComputeUnits(temp) = dev
+                            .info(DeviceInfo::MaxComputeUnits)
+                            .expect("no MaxComputeUnits")
+                        {
+                            pref *= temp as u64;
+                        }
+
+                        if let DeviceInfoResult::MaxClockFrequency(temp) = dev
+                            .info(DeviceInfo::MaxClockFrequency)
+                            .expect("no MaxClockFrequency")
+                        {
+                            pref *= temp as u64;
+                        }
+
+                        device_list.insert(pref, (pl, dev));
+                    }
+                }
+                Err(e) => return Err(KernelLoaderEr::PlatformError(e)),
+            };
+        }
+
+        let mut last_pref = 1;
+        for (pref, _) in &device_list {
+            if *pref > last_pref {
+                last_pref = *pref;
+            }
+        }
+
+        let entry = device_list.get(&last_pref).unwrap();
+
+        debug!("Picked device: {}", entry.1.name().unwrap());
+
         // Add the source to the program and compile.
-        let proque = match proque.prog_bldr(prog_build).build() {
+        let proque = match proque
+            .prog_bldr(prog_build)
+            .platform(entry.0)
+            .device(entry.1)
+            .build()
+        {
             Ok(a) => a,
             Err(e) => {
                 panic!("{}", e);
