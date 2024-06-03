@@ -17,8 +17,7 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 [[package]]
 name = "cl-sys"
 version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4febd824a957638c066180fbf72b2bed5bcee33740773f3dc59fe91f0a3e6595"
+source = "git+https://github.com/forkaduck/ocl#49097061b6c7291f3e2409bbb37754cc5cb7ff16"
 dependencies = [
  "libc",
 ]
@@ -191,8 +190,7 @@ dependencies = [
 [[package]]
 name = "ocl"
 version = "0.19.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4297afb442d411793e4e24ee5a2977d15b6c95c743418f1c0ce0a2397d7ec8a3"
+source = "git+https://github.com/forkaduck/ocl#49097061b6c7291f3e2409bbb37754cc5cb7ff16"
 dependencies = [
  "futures",
  "nodrop",
@@ -205,8 +203,7 @@ dependencies = [
 [[package]]
 name = "ocl-core"
 version = "0.11.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c145dd9f205b86611a5df15eb89517417b03005441cf6cec245c65a4b9248c52"
+source = "git+https://github.com/forkaduck/ocl#49097061b6c7291f3e2409bbb37754cc5cb7ff16"
 dependencies = [
  "bitflags",
  "cl-sys",
@@ -221,8 +218,7 @@ dependencies = [
 [[package]]
 name = "ocl-core-vector"
 version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f562279e046ca160aeed5eaf6f7c4eb9fa56cb8fd9d038dbdbf56225caeb8074"
+source = "git+https://github.com/forkaduck/ocl#49097061b6c7291f3e2409bbb37754cc5cb7ff16"
 dependencies = [
  "num-traits 0.2.19",
 ]

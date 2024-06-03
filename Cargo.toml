@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 matrix_macro = { path = "matrix_macro" }
-ocl = "0.19.0"
+ocl = { version = "0.19.0", git = "https://github.com/forkaduck/ocl" }
 log = "0.4.21"
 simplelog = "0.12.2"
 
