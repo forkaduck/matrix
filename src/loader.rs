@@ -12,16 +12,23 @@ use std::io;
 use std::path::Path;
 use std::sync::OnceLock;
 
+/// TypeMap is an internal type map which represents all possible types
+/// useable by the compute shaders.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum TypeMap {
+    F16,
     F32,
     F64,
 }
 
 impl TypeMap {
     fn c_str(&self) -> Option<&str> {
-        let map: HashMap<TypeMap, &str> =
-            [(TypeMap::F32, "float"), (TypeMap::F64, "double")].into();
+        let map: HashMap<TypeMap, &str> = [
+            (TypeMap::F16, "half"),
+            (TypeMap::F32, "float"),
+            (TypeMap::F64, "double"),
+        ]
+        .into();
 
         map.get(self).copied()
     }
@@ -32,6 +39,7 @@ impl TryFrom<&TypeId> for TypeMap {
 
     fn try_from(input: &TypeId) -> Result<Self, Self::Error> {
         let map: HashMap<TypeId, TypeMap> = [
+            (TypeId::of::<f16>(), TypeMap::F16),
             (TypeId::of::<f32>(), TypeMap::F32),
             (TypeId::of::<f64>(), TypeMap::F64),
         ]

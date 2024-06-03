@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod matrix_tests {
-    use crate::loader::KernelLoader;
-    use crate::Matrix;
     use log::info;
-    use matrix_macro::matrix_new;
     use oorandom;
     use simplelog::{ColorChoice, Config, LevelFilter, TermLogger, TerminalMode};
     use std::path::PathBuf;
+
+    use crate::loader::KernelLoader;
+    use crate::Matrix;
+    use matrix_macro::matrix_new;
 
     #[test]
     fn vec_ops() {
@@ -18,17 +19,17 @@ mod matrix_tests {
         )
         .unwrap();
 
-        let mut loader = KernelLoader::new::<f32>(&PathBuf::from("./kernels")).unwrap();
+        let mut loader = KernelLoader::new::<f16>(&PathBuf::from("./kernels")).unwrap();
         loader.proque.set_dims(1 << 15);
 
-        let mut one = matrix_new!(&loader, f32, 1, 10);
-        let mut two = matrix_new!(&loader, f32, 1, 10);
+        let mut one = matrix_new!(&loader, f16, 1, 10);
+        let mut two = matrix_new!(&loader, f16, 1, 10);
 
         let mut rng = oorandom::Rand64::new(10);
 
         for _ in 0..10 {
-            one.A.push(rng.rand_float() as f32);
-            two.A.push(rng.rand_float() as f32);
+            one.A.push(rng.rand_float() as f16);
+            two.A.push(rng.rand_float() as f16);
         }
 
         info!("Input:");

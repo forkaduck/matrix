@@ -1,4 +1,3 @@
-#pragma OPENCL EXTENSION cl_khr_fp64 : enable
 
 // Define some fallback macros, so that clang can do type checks.
 #ifndef FLOAT_T
