@@ -1,5 +1,5 @@
 #![feature(let_chains)]
-#![feature(f16)]
+//#![feature(f16)]
 
 #[allow(non_snake_case)]
 #[derive(Clone)]

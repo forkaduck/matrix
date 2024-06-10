@@ -1,3 +1,4 @@
+use half::f16;
 use log::debug;
 use ocl::{
     builders::{ProQueBuilder, ProgramBuilder},

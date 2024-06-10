@@ -59,13 +59,17 @@ where
         }
 
         // Get results
-        let mut rv = matrix_macro::matrix_new!(self.loader, T, 1);
+        let mut rv = Matrix {
+            loader: self.loader,
+            A: Vec::with_capacity(self.A.len()),
+        };
 
+        // Has to be preallocated
         rv.A.resize(self.A.len(), T::default());
 
         buffer_output
             .read(&mut rv.A)
-            .len(self.A.len())
+            .len(self.A.capacity())
             .enq()
             .expect("read from out");
         rv
