@@ -3,6 +3,7 @@ use log::debug;
 use ocl::{
     builders::{ProQueBuilder, ProgramBuilder},
     enums::{DeviceInfo, DeviceInfoResult},
+    flags::DeviceType,
     Device, Platform, ProQue,
 };
 use std::any::TypeId;
@@ -92,6 +93,53 @@ impl KernelLoader {
 
             m
         })
+    }
+
+    fn get_device() -> Result<(Platform, Device), KernelLoaderEr> {
+        let mut device_list: HashMap<u64, (Platform, Device)> = HashMap::new();
+
+        for pl in Platform::list() {
+            match Device::list(pl, Some(DeviceType::GPU)) {
+                Ok(a) => {
+                    for dev in a {
+                        let mut pref: u64 = 1;
+
+                        if let DeviceInfoResult::MaxWorkGroupSize(temp) = dev
+                            .info(DeviceInfo::MaxWorkGroupSize)
+                            .expect("no MaxWorkGroupSize")
+                        {
+                            pref *= temp as u64;
+                        }
+
+                        if let DeviceInfoResult::MaxComputeUnits(temp) = dev
+                            .info(DeviceInfo::MaxComputeUnits)
+                            .expect("no MaxComputeUnits")
+                        {
+                            pref *= temp as u64;
+                        }
+
+                        if let DeviceInfoResult::MaxClockFrequency(temp) = dev
+                            .info(DeviceInfo::MaxClockFrequency)
+                            .expect("no MaxClockFrequency")
+                        {
+                            pref *= temp as u64;
+                        }
+
+                        device_list.insert(pref, (pl, dev));
+                    }
+                }
+                Err(e) => return Err(KernelLoaderEr::PlatformError(e)),
+            };
+        }
+
+        let mut last_pref = 1;
+        for (pref, _) in &device_list {
+            if *pref > last_pref {
+                last_pref = *pref;
+            }
+        }
+
+        Ok(device_list.get(&last_pref).unwrap().to_owned())
     }
 
     /// Loads and compiles all kernels.
@@ -199,51 +247,7 @@ impl KernelLoader {
             }
         }
 
-        let mut device_list: HashMap<u64, (Platform, Device)> = HashMap::new();
-
-        for pl in Platform::list() {
-            match Device::list(pl, None) {
-                Ok(a) => {
-                    for dev in a {
-                        let mut pref: u64 = 1;
-
-                        if let DeviceInfoResult::MaxWorkGroupSize(temp) = dev
-                            .info(DeviceInfo::MaxWorkGroupSize)
-                            .expect("no MaxWorkGroupSize")
-                        {
-                            pref *= temp as u64;
-                        }
-
-                        if let DeviceInfoResult::MaxComputeUnits(temp) = dev
-                            .info(DeviceInfo::MaxComputeUnits)
-                            .expect("no MaxComputeUnits")
-                        {
-                            pref *= temp as u64;
-                        }
-
-                        if let DeviceInfoResult::MaxClockFrequency(temp) = dev
-                            .info(DeviceInfo::MaxClockFrequency)
-                            .expect("no MaxClockFrequency")
-                        {
-                            pref *= temp as u64;
-                        }
-
-                        device_list.insert(pref, (pl, dev));
-                    }
-                }
-                Err(e) => return Err(KernelLoaderEr::PlatformError(e)),
-            };
-        }
-
-        let mut last_pref = 1;
-        for (pref, _) in &device_list {
-            if *pref > last_pref {
-                last_pref = *pref;
-            }
-        }
-
-        let entry = device_list.get(&last_pref).unwrap();
-
+        let entry = KernelLoader::get_device()?;
         debug!("Picked device: {}", entry.1.name().unwrap());
 
         // Add the source to the program and compile.
