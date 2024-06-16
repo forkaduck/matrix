@@ -3,7 +3,7 @@ use log::debug;
 use ocl::{
     builders::{ProQueBuilder, ProgramBuilder},
     enums::{DeviceInfo, DeviceInfoResult},
-    flags::DeviceType,
+    flags::{DeviceFpConfig, DeviceType},
     Device, Platform, ProQue,
 };
 use std::any::TypeId;
@@ -16,7 +16,7 @@ use std::sync::OnceLock;
 
 /// TypeMap is an internal type map which represents all possible types
 /// useable by the compute shaders.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 enum TypeMap {
     F16,
     F32,
@@ -24,22 +24,15 @@ enum TypeMap {
 }
 
 impl TypeMap {
-    fn c_str(&self) -> Option<&str> {
-        let map: HashMap<TypeMap, &str> = [
-            (TypeMap::F16, "half"),
-            (TypeMap::F32, "float"),
-            (TypeMap::F64, "double"),
-        ]
-        .into();
-
-        map.get(self).copied()
+    fn c_str(&self) -> &str {
+        match self {
+            TypeMap::F16 => "half",
+            TypeMap::F32 => "float",
+            TypeMap::F64 => "double",
+        }
     }
-}
 
-impl TryFrom<&TypeId> for TypeMap {
-    type Error = ();
-
-    fn try_from(input: &TypeId) -> Result<Self, Self::Error> {
+    fn from_typeid(input: &TypeId) -> TypeMap {
         let map: HashMap<TypeId, TypeMap> = [
             (TypeId::of::<f16>(), TypeMap::F16),
             (TypeId::of::<f32>(), TypeMap::F32),
@@ -47,10 +40,54 @@ impl TryFrom<&TypeId> for TypeMap {
         ]
         .into();
 
-        match map.get(input) {
-            Some(a) => Ok(a.clone()),
-            None => Err(()),
-        }
+        map.get(input)
+            .copied()
+            .expect("Missing from_typeid implementation (bug)")
+    }
+}
+
+struct KernelType {
+    static_repr: TypeMap,
+    fp_config: DeviceFpConfig,
+}
+
+impl KernelType {
+    fn new(type_id: &TypeId, dev: &Device) -> Option<KernelType> {
+        let static_repr = TypeMap::from_typeid(type_id);
+
+        let fp_config = match static_repr {
+            TypeMap::F16 => match dev.info(DeviceInfo::HalfFpConfig).expect("no HalfFpConfig") {
+                DeviceInfoResult::HalfFpConfig(a) => a,
+                _ => return None,
+            },
+            TypeMap::F32 => match dev
+                .info(DeviceInfo::SingleFpConfig)
+                .expect("no SingleFpConfig")
+            {
+                DeviceInfoResult::SingleFpConfig(a) => a,
+                _ => return None,
+            },
+            TypeMap::F64 => match dev
+                .info(DeviceInfo::DoubleFpConfig)
+                .expect("no DoubleFpConfig")
+            {
+                DeviceInfoResult::DoubleFpConfig(a) => a,
+                _ => return None,
+            },
+        };
+
+        Some(KernelType {
+            static_repr,
+            fp_config,
+        })
+    }
+
+    fn get_fp_config(&self) -> DeviceFpConfig {
+        self.fp_config
+    }
+
+    fn get_type(&self) -> TypeMap {
+        self.static_repr
     }
 }
 
@@ -72,7 +109,7 @@ pub enum KernelLoaderEr {
 #[allow(dead_code)]
 pub struct KernelLoader {
     pub proque: ProQue,
-    matrix_type: TypeMap,
+    kernel_type: KernelType,
 }
 
 impl KernelLoader {
@@ -152,13 +189,21 @@ impl KernelLoader {
         let mut proque = ProQueBuilder::new();
         let mut src: HashMap<String, String> = HashMap::new();
 
-        // Convert generic type to internal map of supported types.
-        let matrix_type = match TypeMap::try_from(&TypeId::of::<T>()) {
-            Ok(a) => a,
-            Err(_) => {
-                return Err(KernelLoaderEr::UnsupportedType);
-            }
+        // Get the fastest device that is available.
+        let (platfrom, device) = KernelLoader::get_device()?;
+        debug!("Picked OpenCL device: {}", device.name().unwrap());
+
+        // Construct a dynamic representation of the primary type used in all generic kernels.
+        let kernel_type = match KernelType::new(&TypeId::of::<T>(), &device) {
+            Some(a) => a,
+            None => return Err(KernelLoaderEr::UnsupportedType),
         };
+
+        debug!(
+            "Device rounding mode with {:?}: {:?}",
+            kernel_type.get_type(),
+            kernel_type.get_fp_config()
+        );
 
         // Read all file contents into a vec.
         let directory_entries = match fs::read_dir(kernel_dir) {
@@ -202,17 +247,14 @@ impl KernelLoader {
 
         debug!("Found {} source files", src.len());
 
-        let mut src_global_prefix = String::new();
+        let mut prog_build = ProgramBuilder::new();
 
         // Dynamically adjust types of kernels.
-        match matrix_type.c_str() {
-            Some(a) => src_global_prefix.push_str(format!("#define FLOAT_T {}\n", a).as_str()),
-            None => {
-                return Err(KernelLoaderEr::UnsupportedType);
-            }
-        };
+        let mut src_global_prefix = String::new();
+        src_global_prefix
+            .push_str(format!("#define FLOAT_T {}\n", kernel_type.get_type().c_str()).as_str());
 
-        let mut prog_build = ProgramBuilder::new();
+        // Dynamically adjust the operator used in the kernel.
         for (idx, cs) in &mut src {
             cs.insert_str(0, &src_global_prefix);
 
@@ -247,14 +289,11 @@ impl KernelLoader {
             }
         }
 
-        let entry = KernelLoader::get_device()?;
-        debug!("Picked device: {}", entry.1.name().unwrap());
-
         // Add the source to the program and compile.
         let proque = match proque
             .prog_bldr(prog_build)
-            .platform(entry.0)
-            .device(entry.1)
+            .platform(platfrom)
+            .device(device)
             .build()
         {
             Ok(a) => a,
@@ -265,7 +304,7 @@ impl KernelLoader {
 
         Ok(KernelLoader {
             proque,
-            matrix_type,
+            kernel_type,
         })
     }
 }
