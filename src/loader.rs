@@ -17,7 +17,7 @@ use std::sync::OnceLock;
 /// TypeMap is an internal type map which represents all possible types
 /// useable by the compute shaders.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-enum TypeMap {
+pub enum TypeMap {
     F16,
     F32,
     F64,
@@ -46,7 +46,7 @@ impl TypeMap {
     }
 }
 
-struct KernelType {
+pub struct KernelType {
     static_repr: TypeMap,
     fp_config: DeviceFpConfig,
 }
@@ -82,11 +82,11 @@ impl KernelType {
         })
     }
 
-    fn get_fp_config(&self) -> DeviceFpConfig {
+    pub fn get_fp_config(&self) -> DeviceFpConfig {
         self.fp_config
     }
 
-    fn get_type(&self) -> TypeMap {
+    pub fn get_type(&self) -> TypeMap {
         self.static_repr
     }
 }
@@ -109,7 +109,7 @@ pub enum KernelLoaderEr {
 #[allow(dead_code)]
 pub struct KernelLoader {
     pub proque: ProQue,
-    kernel_type: KernelType,
+    pub kernel_type: KernelType,
 }
 
 impl KernelLoader {
