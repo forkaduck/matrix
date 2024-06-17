@@ -252,7 +252,7 @@ impl KernelLoader {
         // Dynamically adjust types of kernels.
         let mut src_global_prefix = String::new();
         src_global_prefix
-            .push_str(format!("#define FLOAT_T {}\n", kernel_type.get_type().c_str()).as_str());
+            .push_str(format!("#define TYPE_T {}\n", kernel_type.get_type().c_str()).as_str());
 
         // Dynamically adjust the operator used in the kernel.
         for (idx, cs) in &mut src {

@@ -1,8 +1,8 @@
 
 // Define some fallback macros, so that clang can do type checks.
-#ifndef FLOAT_T
+#ifndef TYPE_T
 #warning "Missing float type!"
-#define FLOAT_T float
+#define TYPE_T float
 #endif
 
 #define SIZE_T unsigned long
@@ -17,9 +17,9 @@
 #define KERNEL_NAME add
 #endif
 
-__kernel void KERNEL_NAME(__constant FLOAT_T *rhs, SIZE_T w_rhs,
-			  __constant FLOAT_T *lhs, SIZE_T w_lhs,
-			  __global FLOAT_T *output)
+__kernel void KERNEL_NAME(__constant TYPE_T *rhs, SIZE_T w_rhs,
+			  __constant TYPE_T *lhs, SIZE_T w_lhs,
+			  __global TYPE_T *output)
 {
 	for (size_t i = 0; i < min(w_rhs, w_lhs); i++) {
 		output[i] = lhs[i] OPERATOR rhs[i];
