@@ -27,6 +27,7 @@ mod matrix_tests {
             Err(_) => {}
         };
 
+        println!("");
         Instant::now()
     }
 
