@@ -65,7 +65,7 @@ where
         };
 
         // Has to be preallocated
-        rv.A.resize(self.A.len(), T::default());
+        rv.A.resize(rv.A.capacity(), T::default());
 
         buffer_output
             .read(&mut rv.A)

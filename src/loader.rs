@@ -179,6 +179,38 @@ impl KernelLoader {
         Ok(device_list.get(&last_pref).unwrap().to_owned())
     }
 
+    fn run_test_kernel(&self) {
+        let buffer_output = self.proque.create_buffer::<u8>().expect("buffer out");
+
+        let kernel = match self
+            .proque
+            .kernel_builder("test_capabilities")
+            .arg(&buffer_output)
+            .build()
+        {
+            Ok(a) => a,
+            Err(e) => {
+                panic!("Test Kernel failed to compile!\n{}", e);
+            }
+        };
+
+        unsafe {
+            kernel.enq().expect("kernel enque");
+        }
+
+        let mut output: Vec<u8> = Vec::new();
+
+        // Has to be preallocated
+        output.resize(10, 0);
+
+        buffer_output
+            .read(&mut output)
+            .enq()
+            .expect("read from out");
+
+        debug!("Test kernel output: {:?}", output);
+    }
+
     /// Loads and compiles all kernels.
     ///
     /// On success, returns a new KernelLoader. The object can then be used to create
@@ -302,9 +334,14 @@ impl KernelLoader {
             }
         };
 
-        Ok(KernelLoader {
+        let mut loader = KernelLoader {
             proque,
             kernel_type,
-        })
+        };
+
+        loader.proque.set_dims(1 << 12);
+        loader.run_test_kernel();
+
+        Ok(loader)
     }
 }
