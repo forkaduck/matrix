@@ -291,8 +291,13 @@ impl KernelLoader {
 
         // Dynamically adjust types of kernels.
         let mut src_global_prefix = String::new();
-        src_global_prefix
-            .push_str(format!("#define TYPE_T {}\n", kernel_type.get_type().c_str()).as_str());
+        src_global_prefix.push_str(
+            format!(
+                "#undef TYPE_T\n#define TYPE_T {}\n",
+                kernel_type.get_type().c_str()
+            )
+            .as_str(),
+        );
 
         // Dynamically adjust the operator used in the kernel.
         for (idx, cs) in &mut src {
@@ -305,7 +310,7 @@ impl KernelLoader {
                 && cs.contains("KERNEL_NAME")
                 && let Some(var) = current_variant
             {
-                debug!("Found generic kernel in {}", idx);
+                debug!("Found operator-generic kernel in {}", idx);
 
                 for k in 0..var.length {
                     let mut cs_local = cs.clone();
@@ -323,7 +328,7 @@ impl KernelLoader {
                     prog_build.source(cs_local.clone());
                 }
             } else {
-                debug!("Found kernel in {}", idx);
+                debug!("Found generic kernel in {}", idx);
 
                 prog_build.source(cs.clone());
             }
