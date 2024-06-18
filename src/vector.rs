@@ -1,6 +1,8 @@
 use std::fmt::Debug;
 use std::ops;
 
+use ocl::{Buffer, Kernel};
+
 use crate::Matrix;
 
 pub mod test;
@@ -27,20 +29,36 @@ where
         if self.A.len() != rhs.A.len() {
             panic!("Both operators have to have the same size");
         }
+        let buffer_size = self.A.len();
 
         // Buffers
-        let buffer_rhs = self.loader.proque.create_buffer::<T>().expect("buffer rhs");
-        let buffer_lhs = self.loader.proque.create_buffer::<T>().expect("buffer lhs");
-        let buffer_output = self.loader.proque.create_buffer::<T>().expect("buffer out");
+        let buffer_rhs = Buffer::<T>::builder()
+            .len(buffer_size)
+            .queue(self.loader.queue.clone())
+            .build()
+            .expect("buffer rhs");
+
+        let buffer_lhs = Buffer::<T>::builder()
+            .len(buffer_size)
+            .queue(self.loader.queue.clone())
+            .build()
+            .expect("buffer lhs");
+
+        let buffer_output = Buffer::<T>::builder()
+            .len(buffer_size)
+            .queue(self.loader.queue.clone())
+            .build()
+            .expect("buffer out");
 
         buffer_rhs.write(&rhs.A).enq().expect("write to rhs");
         buffer_lhs.write(&self.A).enq().expect("write to lhs");
 
         // Build the kernel
-        let kernel = match self
-            .loader
-            .proque
-            .kernel_builder(kernel_name)
+        let kernel = match Kernel::builder()
+            .program(&self.loader.program)
+            .name(kernel_name)
+            .queue(self.loader.queue.clone())
+            .global_work_size(1 << 10)
             .arg(&buffer_rhs)
             .arg(buffer_rhs.len() as u64)
             .arg(&buffer_lhs)

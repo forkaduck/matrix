@@ -1,10 +1,10 @@
 use half::f16;
 use log::debug;
 use ocl::{
-    builders::{ProQueBuilder, ProgramBuilder},
+    builders::ProgramBuilder,
     enums::{DeviceInfo, DeviceInfoResult},
     flags::{DeviceFpConfig, DeviceType},
-    Device, Platform, ProQue,
+    Buffer, Context, Device, Kernel, Platform, Program, Queue,
 };
 use std::any::TypeId;
 use std::collections::HashMap;
@@ -104,11 +104,15 @@ pub enum KernelLoaderEr {
     SrcReadError(io::Error),
     SrcDirEmpty,
     PlatformError(ocl::error::Error),
+    QueueError(ocl::error::Error),
+    ContextError(ocl::error::Error),
 }
 
 #[allow(dead_code)]
 pub struct KernelLoader {
-    pub proque: ProQue,
+    pub context: Context,
+    pub queue: Queue,
+    pub program: Program,
     pub kernel_type: KernelType,
 }
 
@@ -179,12 +183,25 @@ impl KernelLoader {
         Ok(device_list.get(&last_pref).unwrap().to_owned())
     }
 
-    fn run_test_kernel(&self) {
-        let buffer_output = self.proque.create_buffer::<u8>().expect("buffer out");
+    /// Runs a test kernel.
+    ///
+    /// Will probably be used in the future to detect various device
+    /// specifics, or benchmark different capabilities.
+    ///
+    /// * `self` - A kernel loader object to operate on.
+    fn run_test_kernel(&mut self) {
+        const SIZE: usize = 10;
+        let buffer_output = Buffer::<u8>::builder()
+            .len(SIZE)
+            .queue(self.queue.clone())
+            .build()
+            .expect("buffer out");
 
-        let kernel = match self
-            .proque
-            .kernel_builder("test_capabilities")
+        let kernel = match Kernel::builder()
+            .program(&self.program)
+            .name("test_capabilities")
+            .queue(self.queue.clone())
+            .global_work_size(1 << 10)
             .arg(&buffer_output)
             .build()
         {
@@ -195,7 +212,7 @@ impl KernelLoader {
         };
 
         unsafe {
-            kernel.enq().expect("kernel enque");
+            kernel.cmd().queue(&self.queue).enq().expect("kernel enque");
         }
 
         let mut output: Vec<u8> = Vec::new();
@@ -221,7 +238,6 @@ impl KernelLoader {
         kernel_dir: &Path,
         unsafe_fast_math: bool,
     ) -> Result<Self, KernelLoaderEr> {
-        let mut proque = ProQueBuilder::new();
         let mut src: HashMap<String, String> = HashMap::new();
 
         // Get the fastest device that is available.
@@ -334,25 +350,30 @@ impl KernelLoader {
             }
         }
 
-        // Add the source to the program and compile.
-        let proque = match proque
-            .prog_bldr(prog_build)
-            .platform(platfrom)
-            .device(device)
-            .build()
-        {
+        // Initialize the context, queue and program (which compiles the program).
+        let context = match Context::builder().platform(platfrom).build() {
             Ok(a) => a,
-            Err(e) => {
-                panic!("{}", e);
-            }
+            Err(e) => return Err(KernelLoaderEr::ContextError(e)),
+        };
+
+        let queue = match Queue::new(&context, device, None) {
+            Ok(a) => a,
+            Err(e) => return Err(KernelLoaderEr::QueueError(e)),
+        };
+
+        let program = match prog_build.devices(device).build(&context) {
+            Ok(a) => a,
+            Err(e) => panic!("\nSource file failed to compile!:{}", e),
         };
 
         let mut loader = KernelLoader {
-            proque,
+            context,
+            queue,
+            program,
             kernel_type,
         };
 
-        loader.proque.set_dims(1 << 12);
+        // Run the test kernel.
         loader.run_test_kernel();
 
         Ok(loader)

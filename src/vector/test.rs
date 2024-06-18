@@ -43,8 +43,7 @@ mod matrix_tests {
     {
         let start = setup();
 
-        let mut loader = KernelLoader::new::<T>(&PathBuf::from("./kernels"), false).unwrap();
-        loader.proque.set_dims(1 << 12);
+        let loader = KernelLoader::new::<T>(&PathBuf::from("./kernels"), false).unwrap();
 
         const VAL_LEN: usize = 5;
 
