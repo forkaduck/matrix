@@ -38,19 +38,22 @@ mod matrix_tests {
             + Mul<Output = T>
             + Div<Output = T>
             + ocl::OclPrm
-            + std::convert::From<u8>,
+            + std::convert::From<u8>
+            + std::convert::Into<f64>,
     {
         let start = setup();
 
         let mut loader = KernelLoader::new::<T>(&PathBuf::from("./kernels")).unwrap();
         loader.proque.set_dims(1 << 12);
 
-        let mut one = matrix_new!(&loader, T, 1, 10);
-        let mut two = matrix_new!(&loader, T, 1, 10);
+        const VAL_LEN: usize = 5;
+
+        let mut one = matrix_new!(&loader, T, 1, VAL_LEN);
+        let mut two = matrix_new!(&loader, T, 1, VAL_LEN);
 
         let mut rng = oorandom::Rand64::new(10);
 
-        for _ in 0..10 {
+        for _ in 0..VAL_LEN {
             let temp = rng.rand_u64() as u8;
             one.A.push(temp.into());
 
@@ -87,10 +90,16 @@ mod matrix_tests {
         info!("Div:\t{:?}", output);
 
         for i in 0..output.A.len() {
-            let quotient = one.A[i] / two.A[i];
+            let quotient: f64 = (one.A[i] / two.A[i]).into();
+            let out = output.A[i].into();
 
-            if quotient != output.A[i] {
-                warn!("Rounding mode of GPU differs from CPU!");
+            if quotient != out {
+                warn!(
+                    "[{}] Rounding mode differs!\nCPU: {:b}\nGPU: {:b}",
+                    i,
+                    quotient.to_bits(),
+                    out.to_bits()
+                );
             }
         }
 
