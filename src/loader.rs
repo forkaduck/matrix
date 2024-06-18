@@ -217,7 +217,10 @@ impl KernelLoader {
     /// matrices using the matrix_new macro.
     ///
     /// * `kernel_dir` - The directory of all OpenCL C files (.cl).
-    pub fn new<T: 'static>(kernel_dir: &Path) -> Result<Self, KernelLoaderEr> {
+    pub fn new<T: 'static>(
+        kernel_dir: &Path,
+        unsafe_fast_math: bool,
+    ) -> Result<Self, KernelLoaderEr> {
         let mut proque = ProQueBuilder::new();
         let mut src: HashMap<String, String> = HashMap::new();
 
@@ -280,6 +283,11 @@ impl KernelLoader {
         debug!("Found {} source files", src.len());
 
         let mut prog_build = ProgramBuilder::new();
+
+        // Add compiler options for faster math.
+        if unsafe_fast_math {
+            prog_build.cmplr_opt("-cl-finite-math-only -cl-unsafe-math-optimizations");
+        }
 
         // Dynamically adjust types of kernels.
         let mut src_global_prefix = String::new();
