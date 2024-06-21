@@ -25,7 +25,7 @@ where
     T: ocl::OclPrm,
     'r: 'l,
 {
-    fn vec_op(&self, rhs: &'r Matrix<Vec<T>>, kernel_name: &str) -> Matrix<'l, Vec<T>> {
+    fn basic_op(&self, rhs: &'r Matrix<Vec<T>>, kernel_name: &str) -> Matrix<'l, Vec<T>> {
         if self.A.len() != rhs.A.len() {
             panic!("Both operators have to have the same size");
         }
@@ -94,50 +94,51 @@ where
     }
 }
 
-impl<'r, 'l, T> ops::Add<&'r Matrix<'_, Vec<T>>> for &'l Matrix<'_, Vec<T>>
-where
-    T: ocl::OclPrm,
-    'r: 'l,
-{
-    type Output = Matrix<'l, Vec<T>>;
+// Helps to implement all basic operations.
+macro_rules! oper_impl {
+    ($op: ident, $kernel: ident) => {
+        impl<'a, T> ops::$op<&'a Matrix<'_, Vec<T>>> for &'a Matrix<'_, Vec<T>>
+        where
+            T: ocl::OclPrm,
+        {
+            type Output = Matrix<'a, Vec<T>>;
 
-    fn add(self, rhs: &'r Matrix<Vec<T>>) -> Self::Output {
-        self.vec_op(rhs, "add")
-    }
+            fn $kernel(self, rhs: &'a Matrix<Vec<T>>) -> Self::Output {
+                self.basic_op(rhs, std::stringify!($kernel))
+            }
+        }
+    };
 }
 
-impl<'r, 'l, T> ops::Sub<&'r Matrix<'_, Vec<T>>> for &'l Matrix<'_, Vec<T>>
-where
-    T: ocl::OclPrm,
-    'r: 'l,
-{
-    type Output = Matrix<'l, Vec<T>>;
+oper_impl!(Add, add);
+oper_impl!(Sub, sub);
+oper_impl!(Mul, mul);
+oper_impl!(Div, div);
 
-    fn sub(self, rhs: &'r Matrix<Vec<T>>) -> Self::Output {
-        self.vec_op(rhs, "sub")
-    }
+// Helps with the *Assign traits.
+macro_rules! assign_oper_impl {
+    ($op: ident, $opfn: ident, $kernel: ident) => {
+        impl<'a, T> ops::$op<&'a Matrix<'_, Vec<T>>> for Matrix<'a, Vec<T>>
+        where
+            T: ocl::OclPrm,
+        {
+            fn $opfn(&mut self, rhs: &'a Matrix<'_, Vec<T>>) {
+                *self = self.basic_op(rhs, std::stringify!($kernel));
+            }
+        }
+    };
 }
 
-impl<'r, 'l, T> ops::Mul<&'r Matrix<'_, Vec<T>>> for &'l Matrix<'_, Vec<T>>
-where
-    T: ocl::OclPrm,
-    'r: 'l,
-{
-    type Output = Matrix<'l, Vec<T>>;
+assign_oper_impl!(AddAssign, add_assign, add);
+assign_oper_impl!(SubAssign, sub_assign, sub);
+assign_oper_impl!(MulAssign, mul_assign, mul);
+assign_oper_impl!(DivAssign, div_assign, div);
 
-    fn mul(self, rhs: &'r Matrix<Vec<T>>) -> Self::Output {
-        self.vec_op(rhs, "mul")
-    }
-}
-
-impl<'r, 'l, T> ops::Div<&'r Matrix<'_, Vec<T>>> for &'l Matrix<'_, Vec<T>>
-where
-    T: ocl::OclPrm,
-    'r: 'l,
-{
-    type Output = Matrix<'l, Vec<T>>;
-
-    fn div(self, rhs: &'r Matrix<Vec<T>>) -> Self::Output {
-        self.vec_op(rhs, "div")
-    }
-}
+// impl<'a, T> ops::AddAssign<&'a Matrix<'_, Vec<T>>> for T
+// where
+// T: ocl::OclPrm,
+// {
+// fn add_assign(&mut self, rhs: &'a Matrix<'_, Vec<T>>) {
+// *self = rhs.vec_op(rhs, "add");
+// }
+// }
