@@ -24,15 +24,15 @@ __kernel void KERNEL_NAME(__constant TYPE_T *rhs, SIZE_T w_rhs,
 			  __constant TYPE_T *lhs, SIZE_T w_lhs,
 			  __global TYPE_T *output)
 {
-	for (size_t i = 0; i < min(w_rhs, w_lhs); i++) {
+	for (SIZE_T i = 0; i < min(w_rhs, w_lhs); i++) {
 		output[i] = lhs[i] OPERATOR rhs[i];
 	}
 }
 
-__kernel void CAT(KERNEL_NAME, _down)(__constant TYPE_T *rhs, SIZE_T w_rhs,
+__kernel void CAT(KERNEL_NAME, _down)(__global TYPE_T *rhs, SIZE_T w_rhs,
 				      __global TYPE_T *output)
 {
-	for (size_t i = 0; i < w_rhs; i++) {
+	for (SIZE_T i = 0; i < w_rhs; i++) {
 		*output = *output OPERATOR rhs[i];
 	}
 }

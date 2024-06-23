@@ -67,6 +67,7 @@ where
             .name(kernel_name)
             .queue(self.loader.queue.clone())
             .global_work_size(1 << 10)
+            .local_work_size(1) // FIX Avoid race condition.
             .arg(&buffer_rhs)
             .arg(buffer_rhs.len() as u64)
             .arg(&buffer_lhs)
@@ -100,6 +101,10 @@ where
     }
 
     fn down_op(&self, kernel_name: &str) -> Matrix<'_, T> {
+        // Check for common invocation errors.
+        debug_assert!(self.A.len() != 0, "RHS is empty");
+
+        // Create buffers and initialize them.
         let buffer_rhs = Buffer::<T>::builder()
             .len(self.A.len())
             .queue(self.loader.queue.clone())
@@ -110,15 +115,21 @@ where
             .len(1)
             .queue(self.loader.queue.clone())
             .build()
-            .expect("buffer rhs");
+            .expect("buffer output");
 
         buffer_rhs.write(&self.A).enq().expect("write to rhs");
+        buffer_output
+            .write(&[T::default()][..])
+            .enq()
+            .expect("write to output");
 
+        // Build and run the kernel.
         let kernel = match Kernel::builder()
             .program(&self.loader.program)
             .name(kernel_name)
             .queue(self.loader.queue.clone())
             .global_work_size(1 << 10)
+            .local_work_size(1) // FIX Avoid race condition.
             .arg(&buffer_rhs)
             .arg(buffer_rhs.len() as u64)
             .arg(&buffer_output)
@@ -134,17 +145,18 @@ where
             kernel.enq().expect("kernel enque");
         }
 
-        let mut rv: Vec<T> = Vec::with_capacity(1);
+        // Read the output from device memory.
+        let mut result: Vec<T> = vec![T::default(); 1];
 
         buffer_output
-            .read(&mut rv)
+            .read(&mut result)
             .len(1)
             .enq()
             .expect("read from out");
 
         Matrix {
             loader: &self.loader,
-            A: rv[0],
+            A: result[0],
         }
     }
 }
