@@ -92,9 +92,58 @@ where
             .expect("read from out");
         rv
     }
+
+    fn down_op(&self, kernel_name: &str) -> Matrix<'_, T> {
+        let buffer_rhs = Buffer::<T>::builder()
+            .len(self.A.len())
+            .queue(self.loader.queue.clone())
+            .build()
+            .expect("buffer rhs");
+
+        let buffer_output = Buffer::<T>::builder()
+            .len(1)
+            .queue(self.loader.queue.clone())
+            .build()
+            .expect("buffer rhs");
+
+        buffer_rhs.write(&self.A).enq().expect("write to rhs");
+
+        let kernel = match Kernel::builder()
+            .program(&self.loader.program)
+            .name(kernel_name)
+            .queue(self.loader.queue.clone())
+            .global_work_size(1 << 10)
+            .arg(&buffer_rhs)
+            .arg(buffer_rhs.len() as u64)
+            .arg(&buffer_output)
+            .build()
+        {
+            Ok(a) => a,
+            Err(e) => {
+                panic!("{}", e);
+            }
+        };
+
+        unsafe {
+            kernel.enq().expect("kernel enque");
+        }
+
+        let mut rv: Vec<T> = Vec::with_capacity(1);
+
+        buffer_output
+            .read(&mut rv)
+            .len(1)
+            .enq()
+            .expect("read from out");
+
+        Matrix {
+            loader: &self.loader,
+            A: rv[0],
+        }
+    }
 }
 
-// Helps to implement all basic operations.
+// Implementation of Matrix<Vec<T>> = Matrix<Vec<T>> @ Matrix<Vec<T>>
 macro_rules! oper_impl {
     ($op: ident, $kernel: ident) => {
         impl<'a, T> ops::$op<&'a Matrix<'_, Vec<T>>> for &'a Matrix<'_, Vec<T>>
@@ -115,7 +164,7 @@ oper_impl!(Sub, sub);
 oper_impl!(Mul, mul);
 oper_impl!(Div, div);
 
-// Helps with the *Assign traits.
+// Implementation of Matrix<Vec<T>> @= Matrix<Vec<T>>
 macro_rules! assign_oper_impl {
     ($op: ident, $opfn: ident, $kernel: ident) => {
         impl<'a, T> ops::$op<&'a Matrix<'_, Vec<T>>> for Matrix<'a, Vec<T>>
@@ -134,11 +183,21 @@ assign_oper_impl!(SubAssign, sub_assign, sub);
 assign_oper_impl!(MulAssign, mul_assign, mul);
 assign_oper_impl!(DivAssign, div_assign, div);
 
-// impl<'a, T> ops::AddAssign<&'a Matrix<'_, Vec<T>>> for T
-// where
-// T: ocl::OclPrm,
-// {
-// fn add_assign(&mut self, rhs: &'a Matrix<'_, Vec<T>>) {
-// *self = rhs.vec_op(rhs, "add");
-// }
-// }
+// Implementation of Matrix<T> @= Matrix<Vec<T>>
+macro_rules! assign_down_impl {
+    ($op: ident, $opfn: ident, $kernel: ident) => {
+        impl<'a, T> ops::$op<&'a Matrix<'_, Vec<T>>> for Matrix<'a, T>
+        where
+            T: ocl::OclPrm,
+        {
+            fn $opfn(&mut self, rhs: &'a Matrix<'_, Vec<T>>) {
+                *self = rhs.down_op(std::stringify!($kernel));
+            }
+        }
+    };
+}
+
+assign_down_impl!(AddAssign, add_assign, add_down);
+assign_down_impl!(SubAssign, sub_assign, sub_down);
+assign_down_impl!(MulAssign, mul_assign, mul_down);
+assign_down_impl!(DivAssign, div_assign, div_down);
