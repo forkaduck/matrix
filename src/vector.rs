@@ -26,12 +26,19 @@ where
     'r: 'l,
 {
     fn basic_op(&self, rhs: &'r Matrix<Vec<T>>, kernel_name: &str) -> Matrix<'l, Vec<T>> {
-        if self.A.len() != rhs.A.len() {
-            panic!("Both operators have to have the same size");
-        }
+        // Check for common invocation errors.
+        debug_assert!(
+            self.A.len() == rhs.A.len(),
+            "Both operators have to have the same size! lhs:{} != rhs:{}",
+            self.A.len(),
+            rhs.A.len()
+        );
+        debug_assert!(self.A.len() != 0, "LHS is empty");
+        debug_assert!(rhs.A.len() != 0, "RHS is empty");
+
         let buffer_size = self.A.len();
 
-        // Buffers
+        // Create all operator buffers.
         let buffer_rhs = Buffer::<T>::builder()
             .len(buffer_size)
             .queue(self.loader.queue.clone())
@@ -50,10 +57,11 @@ where
             .build()
             .expect("buffer out");
 
+        // Write the Vec contents to their respective buffer.
         buffer_rhs.write(&rhs.A).enq().expect("write to rhs");
         buffer_lhs.write(&self.A).enq().expect("write to lhs");
 
-        // Build the kernel
+        // Build & Run the kernel.
         let kernel = match Kernel::builder()
             .program(&self.loader.program)
             .name(kernel_name)
@@ -76,21 +84,19 @@ where
             kernel.enq().expect("kernel enque");
         }
 
-        // Get results
-        let mut rv = Matrix {
+        // Package the results.
+        let mut result = Matrix {
             loader: self.loader,
-            A: Vec::with_capacity(self.A.len()),
+            A: vec![T::default(); buffer_size],
         };
 
-        // Has to be preallocated
-        rv.A.resize(rv.A.capacity(), T::default());
-
         buffer_output
-            .read(&mut rv.A)
-            .len(self.A.capacity())
+            .read(&mut result.A)
+            .len(buffer_size)
             .enq()
             .expect("read from out");
-        rv
+
+        result
     }
 
     fn down_op(&self, kernel_name: &str) -> Matrix<'_, T> {
