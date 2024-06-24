@@ -16,7 +16,7 @@ mod matrix_tests {
         println!("Time elapsed: {}s", (Instant::now() - start).as_secs_f64());
     }
 
-    pub fn setup() -> Instant {
+    pub fn setup() {
         match TermLogger::init(
             LevelFilter::Debug,
             Config::default(),
@@ -28,7 +28,6 @@ mod matrix_tests {
         };
 
         println!("");
-        Instant::now()
     }
 
     fn vec_ops<T>()
@@ -41,7 +40,8 @@ mod matrix_tests {
             + std::convert::From<u8>
             + std::convert::Into<f64>,
     {
-        let start = setup();
+        setup();
+        let start = Instant::now();
 
         let loader = KernelLoader::new::<T>(&PathBuf::from("./kernels"), false).unwrap();
 
@@ -50,13 +50,13 @@ mod matrix_tests {
         let mut one = matrix_new!(&loader, T, 1, VAL_LEN);
         let mut two = matrix_new!(&loader, T, 1, VAL_LEN);
 
-        let mut rng = oorandom::Rand64::new(10);
+        let mut rng = oorandom::Rand32::new(10);
 
         for _ in 0..VAL_LEN {
-            let temp = rng.rand_u64() as u8;
+            let temp = rng.rand_u32() as u8;
             one.A.push(temp.into());
 
-            let temp = rng.rand_u64() as u8;
+            let temp = rng.rand_u32() as u8;
             two.A.push(temp.into());
         }
 
