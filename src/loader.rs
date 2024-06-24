@@ -136,6 +136,10 @@ impl KernelLoader {
         })
     }
 
+    /// Checks for available devices
+    ///
+    /// Currently, goes through all devices and searches the one with
+    /// the highest "performance metrics".
     fn get_device() -> Result<(Platform, Device), KernelLoaderEr> {
         let mut device_list: HashMap<u64, (Platform, Device)> = HashMap::new();
 
@@ -144,13 +148,6 @@ impl KernelLoader {
                 Ok(a) => {
                     for dev in a {
                         let mut pref: u64 = 1;
-
-                        if let DeviceInfoResult::MaxWorkGroupSize(temp) = dev
-                            .info(DeviceInfo::MaxWorkGroupSize)
-                            .expect("no MaxWorkGroupSize")
-                        {
-                            pref *= temp as u64;
-                        }
 
                         if let DeviceInfoResult::MaxComputeUnits(temp) = dev
                             .info(DeviceInfo::MaxComputeUnits)
@@ -165,6 +162,13 @@ impl KernelLoader {
                         {
                             pref *= temp as u64;
                         }
+
+                        pref *= dev.max_wg_size().expect("no MaxWorkGroupSize") as u64;
+                        pref *= if dev.is_available().expect("no IsAvailable") {
+                            1
+                        } else {
+                            0
+                        };
 
                         device_list.insert(pref, (pl, dev));
                     }
