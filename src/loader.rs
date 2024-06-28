@@ -4,7 +4,7 @@ use ocl::{
     builders::ProgramBuilder,
     enums::{DeviceInfo, DeviceInfoResult},
     flags::{DeviceFpConfig, DeviceType},
-    Buffer, Context, Device, Kernel, Platform, Program, Queue,
+    Buffer, Context, Device, Kernel, Platform, Program, Queue, SpatialDims,
 };
 use std::any::TypeId;
 use std::collections::HashMap;
@@ -110,9 +110,13 @@ pub enum KernelLoaderEr {
 
 #[allow(dead_code)]
 pub struct KernelLoader {
+    pub global_work_size: SpatialDims,
+    pub local_work_size: SpatialDims,
+
     pub context: Context,
     pub queue: Queue,
     pub program: Program,
+
     pub kernel_type: KernelType,
 }
 
@@ -205,7 +209,8 @@ impl KernelLoader {
             .program(&self.program)
             .name("test_capabilities")
             .queue(self.queue.clone())
-            .global_work_size(1 << 10)
+            .global_work_size(self.global_work_size)
+            .local_work_size(self.local_work_size)
             .arg(&buffer_output)
             .build()
         {
@@ -241,12 +246,19 @@ impl KernelLoader {
     pub fn new<T: 'static>(
         kernel_dir: &Path,
         unsafe_fast_math: bool,
+        threads: usize,
     ) -> Result<Self, KernelLoaderEr> {
         let mut src: HashMap<String, String> = HashMap::new();
 
         // Get the fastest device that is available.
         let (platfrom, device) = KernelLoader::get_device()?;
         debug!("Picked OpenCL device: {}", device.name().unwrap());
+
+        let global_work_size =
+            SpatialDims::from(device.max_wg_size().expect("no MaxWorkGroupSize"));
+
+        let local_work_size =
+            SpatialDims::from(device.max_wg_size().expect("no MaxWorkGroupSize") / threads);
 
         // Construct a dynamic representation of the primary type used in all generic kernels.
         let kernel_type = match KernelType::new(&TypeId::of::<T>(), &device) {
@@ -371,9 +383,13 @@ impl KernelLoader {
         };
 
         let mut loader = KernelLoader {
+            global_work_size,
+            local_work_size,
+
             context,
             queue,
             program,
+
             kernel_type,
         };
 

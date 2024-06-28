@@ -66,8 +66,8 @@ where
             .program(&self.loader.program)
             .name(kernel_name)
             .queue(self.loader.queue.clone())
-            .global_work_size(1 << 10)
-            .local_work_size(1) // FIX Avoid race condition.
+            .global_work_size(self.loader.global_work_size)
+            .local_work_size(self.loader.local_work_size)
             .arg(&buffer_rhs)
             .arg(buffer_rhs.len() as u64)
             .arg(&buffer_lhs)
@@ -128,8 +128,8 @@ where
             .program(&self.loader.program)
             .name(kernel_name)
             .queue(self.loader.queue.clone())
-            .global_work_size(1 << 10)
-            .local_work_size(1) // FIX Avoid race condition.
+            .global_work_size(self.loader.global_work_size)
+            .local_work_size(self.loader.local_work_size)
             .arg(&buffer_rhs)
             .arg(buffer_rhs.len() as u64)
             .arg(&buffer_output)
