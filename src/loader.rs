@@ -1,7 +1,7 @@
 use half::f16;
 use log::debug;
 use ocl::{
-    builders::ProgramBuilder,
+    builders::{BuildOpt, ProgramBuilder},
     enums::{DeviceInfo, DeviceInfoResult},
     flags::{DeviceFpConfig, DeviceType},
     Buffer, Context, Device, Kernel, Platform, Program, Queue, SpatialDims,
@@ -100,7 +100,8 @@ struct KernelVariant<'a> {
 #[derive(Debug)]
 pub enum KernelLoaderEr {
     UnsupportedType,
-    SrcDirError(io::Error),
+    SrcDirReadError(io::Error),
+    SrcDirError,
     SrcReadError(io::Error),
     SrcDirEmpty,
     PlatformError(ocl::error::Error),
@@ -250,6 +251,11 @@ impl KernelLoader {
     ) -> Result<Self, KernelLoaderEr> {
         let mut src: HashMap<String, String> = HashMap::new();
 
+        let kernel_dir_str = match kernel_dir.to_str() {
+            Some(a) => a,
+            None => return Err(KernelLoaderEr::SrcDirError),
+        };
+
         // Get the fastest device that is available.
         let (platfrom, device) = KernelLoader::get_device()?;
         debug!("Picked OpenCL device: {}", device.name().unwrap());
@@ -276,7 +282,7 @@ impl KernelLoader {
         let directory_entries = match fs::read_dir(kernel_dir) {
             Ok(a) => a,
             Err(e) => {
-                return Err(KernelLoaderEr::SrcDirError(e));
+                return Err(KernelLoaderEr::SrcDirReadError(e));
             }
         };
 
@@ -320,6 +326,10 @@ impl KernelLoader {
         if unsafe_fast_math {
             prog_build.cmplr_opt("-cl-finite-math-only -cl-unsafe-math-optimizations");
         }
+
+        prog_build.bo(BuildOpt::CmplrInclDir {
+            path: kernel_dir_str.to_string(),
+        });
 
         // Dynamically adjust types of kernels.
         let mut src_global_prefix = String::new();
