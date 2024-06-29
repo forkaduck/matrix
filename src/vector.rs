@@ -111,17 +111,7 @@ where
             .build()
             .expect("buffer rhs");
 
-        let buffer_output = Buffer::<T>::builder()
-            .len(1)
-            .queue(self.loader.queue.clone())
-            .build()
-            .expect("buffer output");
-
         buffer_rhs.write(&self.A).enq().expect("write to rhs");
-        buffer_output
-            .write(&[T::default()][..])
-            .enq()
-            .expect("write to output");
 
         // Build and run the kernel.
         let kernel = match Kernel::builder()
@@ -132,7 +122,6 @@ where
             .local_work_size(self.loader.local_work_size)
             .arg(&buffer_rhs)
             .arg(buffer_rhs.len() as u64)
-            .arg(&buffer_output)
             .build()
         {
             Ok(a) => a,
@@ -148,7 +137,7 @@ where
         // Read the output from device memory.
         let mut result: Vec<T> = vec![T::default(); 1];
 
-        buffer_output
+        buffer_rhs
             .read(&mut result)
             .len(1)
             .enq()

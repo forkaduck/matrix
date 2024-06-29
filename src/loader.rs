@@ -262,7 +262,7 @@ impl KernelLoader {
         debug!("Picked OpenCL device: {}", device.name().unwrap());
 
         let global_work_size =
-            SpatialDims::from(device.max_wg_size().expect("no MaxWorkGroupSize"));
+            SpatialDims::from(device.max_wg_size().expect("no MaxWorkGroupSize") / threads);
 
         let local_work_size =
             SpatialDims::from(device.max_wg_size().expect("no MaxWorkGroupSize") / threads);
