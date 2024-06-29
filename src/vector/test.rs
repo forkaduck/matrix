@@ -43,7 +43,7 @@ mod matrix_tests {
         setup();
         let start = Instant::now();
 
-        let loader = KernelLoader::new::<T>(&PathBuf::from("./kernels"), false, 16).unwrap();
+        let loader = KernelLoader::new::<T>(&PathBuf::from("./kernels"), false, false, 16).unwrap();
 
         const VAL_LEN: usize = 5;
 

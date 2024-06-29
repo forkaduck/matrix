@@ -247,6 +247,7 @@ impl KernelLoader {
     pub fn new<T: 'static>(
         kernel_dir: &Path,
         unsafe_fast_math: bool,
+        kernel_debug: bool,
         threads: usize,
     ) -> Result<Self, KernelLoaderEr> {
         let mut src: HashMap<String, String> = HashMap::new();
@@ -322,11 +323,6 @@ impl KernelLoader {
 
         let mut prog_build = ProgramBuilder::new();
 
-        // Add compiler options for faster math.
-        if unsafe_fast_math {
-            prog_build.cmplr_opt("-cl-finite-math-only -cl-unsafe-math-optimizations");
-        }
-
         prog_build.bo(BuildOpt::CmplrInclDir {
             path: kernel_dir_str.to_string(),
         });
@@ -340,6 +336,15 @@ impl KernelLoader {
             )
             .as_str(),
         );
+
+        // Add compiler options for faster math.
+        if unsafe_fast_math {
+            prog_build.cmplr_opt("-cl-finite-math-only -cl-unsafe-math-optimizations");
+        }
+
+        if kernel_debug {
+            src_global_prefix.push_str(format!("#define DEBUG\n").as_str());
+        }
 
         // Dynamically adjust the operator used in the kernel.
         for (idx, cs) in &mut src {
