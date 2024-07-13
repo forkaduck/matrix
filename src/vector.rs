@@ -205,6 +205,4 @@ macro_rules! assign_down_impl {
 }
 
 assign_down_impl!(AddAssign, add_assign, add_down);
-assign_down_impl!(SubAssign, sub_assign, sub_down);
 assign_down_impl!(MulAssign, mul_assign, mul_down);
-assign_down_impl!(DivAssign, div_assign, div_down);
