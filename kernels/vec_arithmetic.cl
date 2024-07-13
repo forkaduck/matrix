@@ -42,8 +42,10 @@ __kernel void KERNEL_NAME(__constant TYPE_T *rhs, SIZE_T w_rhs,
 			  __constant TYPE_T *lhs, SIZE_T w_lhs,
 			  __global TYPE_T *output)
 {
-	for (SIZE_T i = 0; i < min(w_rhs, w_lhs); i++) {
-		output[i] = lhs[i] OPERATOR rhs[i];
+	if (get_local_id(0) == 0) {
+		for (SIZE_T i = 0; i < min(w_rhs, w_lhs); i++) {
+			output[i] = lhs[i] OPERATOR rhs[i];
+		}
 	}
 }
 
