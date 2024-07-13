@@ -4,7 +4,7 @@ use ocl::{
     builders::{BuildOpt, ProgramBuilder},
     enums::{DeviceInfo, DeviceInfoResult},
     flags::{DeviceFpConfig, DeviceType},
-    Buffer, Context, Device, Kernel, Platform, Program, Queue, SpatialDims,
+    Context, Device, Platform, Program, Queue, SpatialDims,
 };
 use std::any::TypeId;
 use std::collections::HashMap;
@@ -201,52 +201,6 @@ impl KernelLoader {
         Ok(device_list.get(&last_pref).unwrap().to_owned())
     }
 
-    /// Runs the test kernel.
-    ///
-    /// Will probably be used in the future to detect various device
-    /// specifics, or benchmark different capabilities.
-    ///
-    /// * `self` - A kernel loader object to operate on.
-    fn run_test_kernel(&mut self) {
-        const SIZE: usize = 10;
-        let buffer_output = Buffer::<u8>::builder()
-            .len(SIZE)
-            .queue(self.queue.clone())
-            .build()
-            .expect("buffer out");
-
-        let kernel = match Kernel::builder()
-            .program(&self.program)
-            .name("test_capabilities")
-            .queue(self.queue.clone())
-            .global_work_size(self.global_work_size)
-            .local_work_size(self.local_work_size)
-            .arg(&buffer_output)
-            .build()
-        {
-            Ok(a) => a,
-            Err(e) => {
-                panic!("Test Kernel failed to compile!\n{}", e);
-            }
-        };
-
-        unsafe {
-            kernel.cmd().queue(&self.queue).enq().expect("kernel enque");
-        }
-
-        let mut output: Vec<u8> = Vec::new();
-
-        // Has to be preallocated
-        output.resize(10, 0);
-
-        buffer_output
-            .read(&mut output)
-            .enq()
-            .expect("read from out");
-
-        debug!("Test kernel output: {:?}", output);
-    }
-
     /// Loads and compiles all kernels.
     /// On success, returns a new KernelLoader. The object can then be used to create
     /// matrices using the matrix_new macro.
@@ -414,7 +368,7 @@ impl KernelLoader {
             Err(e) => panic!("\nSource file failed to compile!:{}", e),
         };
 
-        let mut loader = KernelLoader {
+        let loader = KernelLoader {
             global_work_size,
             local_work_size,
 
@@ -424,9 +378,6 @@ impl KernelLoader {
 
             kernel_type,
         };
-
-        // Run the test kernel.
-        loader.run_test_kernel();
 
         Ok(loader)
     }
