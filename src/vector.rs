@@ -61,7 +61,7 @@ where
         buffer_rhs.write(&rhs.A).enq().expect("write to rhs");
         buffer_lhs.write(&self.A).enq().expect("write to lhs");
 
-        // Build & Run the kernel.
+        // Run the kernel.
         let kernel = match Kernel::builder()
             .program(&self.loader.program)
             .name(kernel_name)

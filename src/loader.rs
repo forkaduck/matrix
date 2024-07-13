@@ -52,6 +52,8 @@ pub struct KernelType {
 }
 
 impl KernelType {
+    /// Checks the devices for their floating point configuration.
+    /// (Rounding mode, and so on...)
     fn new(type_id: &TypeId, dev: &Device) -> Option<KernelType> {
         let static_repr = TypeMap::from_typeid(type_id);
 
@@ -91,6 +93,8 @@ impl KernelType {
     }
 }
 
+/// Controls the list of operators, which are used in code
+/// generation for a operator-generic kernel.
 struct KernelVariant<'a> {
     pub name: &'a [&'a str],
     pub operator: &'a [&'a str],
@@ -109,6 +113,7 @@ pub enum KernelLoaderEr {
     ContextError(ocl::error::Error),
 }
 
+/// A struct which acts as a context for the library.
 #[allow(dead_code)]
 pub struct KernelLoader {
     pub global_work_size: SpatialDims,
@@ -122,6 +127,8 @@ pub struct KernelLoader {
 }
 
 impl KernelLoader {
+    // Initialise our KernelVariants at runtime.
+    // Has to be done this way because const is kinda limited.
     fn get_variants() -> &'static HashMap<&'static str, KernelVariant<'static>> {
         static MAP: OnceLock<HashMap<&str, KernelVariant<'static>>> = OnceLock::new();
 
@@ -141,10 +148,12 @@ impl KernelLoader {
         })
     }
 
-    /// Checks for available devices
-    ///
-    /// Currently, goes through all devices and searches the one with
-    /// the highest "performance metrics".
+    // Checks for available devices
+    //
+    // Currently, goes through all devices and searches the one with
+    // the highest "performance" metrics.
+    //
+    // "performance" = MaxComputeUnits * MaxClockFreq * MaxWorkGroupSize
     fn get_device() -> Result<(Platform, Device), KernelLoaderEr> {
         let mut device_list: HashMap<u64, (Platform, Device)> = HashMap::new();
 
@@ -192,7 +201,7 @@ impl KernelLoader {
         Ok(device_list.get(&last_pref).unwrap().to_owned())
     }
 
-    /// Runs a test kernel.
+    /// Runs the test kernel.
     ///
     /// Will probably be used in the future to detect various device
     /// specifics, or benchmark different capabilities.
@@ -239,11 +248,18 @@ impl KernelLoader {
     }
 
     /// Loads and compiles all kernels.
-    ///
     /// On success, returns a new KernelLoader. The object can then be used to create
     /// matrices using the matrix_new macro.
     ///
+    /// Although currently matrix_new is a bit limited. It may be better to do it manually,
+    /// sometimes.
+    ///
     /// * `kernel_dir` - The directory of all OpenCL C files (.cl).
+    /// * `unsafe_fast_math` - Enables -cl-finite-math-only and -cl-unsafe-math-optimizations,
+    /// which is a bit faster.
+    /// * `kernel_debug` - Enables all debug statements in all kernels.
+    /// * `threads` - The amount of threads that will use this context. (Indirectly scales work
+    /// size)
     pub fn new<T: 'static>(
         kernel_dir: &Path,
         unsafe_fast_math: bool,
@@ -323,6 +339,7 @@ impl KernelLoader {
 
         let mut prog_build = ProgramBuilder::new();
 
+        // Should add a include directory. (FIX)
         prog_build.bo(BuildOpt::CmplrInclDir {
             path: kernel_dir_str.to_string(),
         });
@@ -337,7 +354,6 @@ impl KernelLoader {
             .as_str(),
         );
 
-        // Add compiler options for faster math.
         if unsafe_fast_math {
             prog_build.cmplr_opt("-cl-finite-math-only -cl-unsafe-math-optimizations");
         }
@@ -352,7 +368,7 @@ impl KernelLoader {
 
             let current_variant = Self::get_variants().get(idx.as_str());
 
-            // Is the current kernel a generic one?
+            // Is the current kernel generic or an operator-generic one?
             if cs.contains("OPERATOR")
                 && cs.contains("KERNEL_NAME")
                 && let Some(var) = current_variant
@@ -369,7 +385,7 @@ impl KernelLoader {
                         format!("#define OPERATOR {}\n", var.operator[k]).as_str(),
                     );
 
-                    // Is backwards because we insert at the top.
+                    // Is backwards because we insert at the top of the source file.
                     cs_local.insert_str(0, "#undef KERNEL_NAME\n#undef OPERATOR\n");
 
                     prog_build.source(cs_local.clone());
@@ -381,7 +397,7 @@ impl KernelLoader {
             }
         }
 
-        // Initialize the context, queue and program (which compiles the program).
+        // Initialize the context and queue.
         let context = match Context::builder().platform(platfrom).build() {
             Ok(a) => a,
             Err(e) => return Err(KernelLoaderEr::ContextError(e)),
@@ -392,6 +408,7 @@ impl KernelLoader {
             Err(e) => return Err(KernelLoaderEr::QueueError(e)),
         };
 
+        // Compile the kernel.
         let program = match prog_build.devices(device).build(&context) {
             Ok(a) => a,
             Err(e) => panic!("\nSource file failed to compile!:{}", e),
