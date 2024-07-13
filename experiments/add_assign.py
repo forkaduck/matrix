@@ -1,5 +1,7 @@
 #!/bin/python
 
+# Run this to visually explain the current algorithm for all assign operators.
+
 from colorama import Back
 import math
 
