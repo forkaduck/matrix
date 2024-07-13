@@ -33,8 +33,10 @@ mod matrix_tests {
     fn vec_ops<T>()
     where
         T: Add<Output = T>
+            + AddAssign
             + Sub<Output = T>
             + Mul<Output = T>
+            + MulAssign
             + Div<Output = T>
             + ocl::OclPrm
             + std::convert::From<u8>
@@ -60,37 +62,61 @@ mod matrix_tests {
             two.A.push(temp.into());
         }
 
+        macro_rules! normal_op_test {
+            ($op: ident, $name: ident) => {
+                let result = &one.$op(&two);
+                info!("{}:\t{:?}", std::stringify!($name), result);
+
+                for i in 0..result.A.len() {
+                    assert_eq!(one.A[i].$op(two.A[i]), result.A[i]);
+                }
+            };
+        }
+
         info!("Input:");
         info!("1: \t{:?}", one);
         info!("2: \t{:?}", two);
 
-        let output = &one + &two;
-        info!("Add:\t{:?}", output);
+        // Check +
+        normal_op_test!(add, Add);
 
-        for i in 0..output.A.len() {
-            assert_eq!(one.A[i] + two.A[i], output.A[i]);
+        let mut result = Matrix {
+            loader: &loader,
+            A: T::default(),
+        };
+        result += &one;
+
+        let mut sec_result = one.A[0];
+        for i in 1..one.A.len() {
+            sec_result += one.A[i];
         }
+        assert_eq!(result.A, sec_result);
 
-        let output = &one - &two;
-        info!("Sub:\t{:?}", output);
+        // Check -
+        normal_op_test!(sub, Sub);
 
-        for i in 0..output.A.len() {
-            assert_eq!(one.A[i] - two.A[i], output.A[i]);
+        // Check *
+        normal_op_test!(mul, Mul);
+
+        let mut result = Matrix {
+            loader: &loader,
+            A: T::default(),
+        };
+        result *= &one;
+
+        let mut sec_result = one.A[0];
+        for i in 1..one.A.len() {
+            sec_result *= one.A[i];
         }
+        assert_eq!(result.A, sec_result);
 
-        let output = &one * &two;
-        info!("Mult:\t{:?}", output);
+        // Check /
+        let result = &one / &two;
+        info!("Div:\t{:?}", result);
 
-        for i in 0..output.A.len() {
-            assert_eq!(one.A[i] * two.A[i], output.A[i]);
-        }
-
-        let output = &one / &two;
-        info!("Div:\t{:?}", output);
-
-        for i in 0..output.A.len() {
+        for i in 0..result.A.len() {
             let quotient: f64 = (one.A[i] / two.A[i]).into();
-            let out = output.A[i].into();
+            let out = result.A[i].into();
 
             if quotient != out {
                 warn!(
