@@ -42,10 +42,11 @@ __kernel void KERNEL_NAME(__constant TYPE_T *rhs, SIZE_T w_rhs,
 			  __constant TYPE_T *lhs, SIZE_T w_lhs,
 			  __global TYPE_T *output)
 {
-	if (get_local_id(0) == 0) {
-		for (SIZE_T i = 0; i < min(w_rhs, w_lhs); i++) {
-			output[i] = lhs[i] OPERATOR rhs[i];
-		}
+	const SIZE_T local_id = get_local_id(0);
+	const SIZE_T local_size = get_local_size(0);
+
+	for (SIZE_T i = local_id; i < min(w_rhs, w_lhs); i += local_size) {
+		output[i] = lhs[i] OPERATOR rhs[i];
 	}
 }
 

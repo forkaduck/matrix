@@ -30,7 +30,7 @@ mod matrix_tests {
         println!("");
     }
 
-    fn vec_ops<T>()
+    fn vec_ops<T, const VAL_LEN: usize>()
     where
         T: Add<Output = T>
             + AddAssign
@@ -47,18 +47,16 @@ mod matrix_tests {
 
         let loader = KernelLoader::new::<T>(&PathBuf::from("./kernels"), false, false, 16).unwrap();
 
-        const VAL_LEN: usize = 5;
-
         let mut one = matrix_new!(&loader, T, 1, VAL_LEN);
         let mut two = matrix_new!(&loader, T, 1, VAL_LEN);
 
         let mut rng = oorandom::Rand32::new(10);
 
         for _ in 0..VAL_LEN {
-            let temp = rng.rand_u32() as u8;
+            let temp = (rng.rand_u32() as u8) % 10;
             one.A.push(temp.into());
 
-            let temp = rng.rand_u32() as u8;
+            let temp = (rng.rand_u32() as u8) % 10;
             two.A.push(temp.into());
         }
 
@@ -131,18 +129,25 @@ mod matrix_tests {
         timer_end(start);
     }
 
+    // Test all possible matrix types.
     #[test]
     fn vec_ops_f16() {
-        vec_ops::<f16>();
+        vec_ops::<f16, 10>();
     }
 
     #[test]
     fn vec_ops_f32() {
-        vec_ops::<f32>();
+        vec_ops::<f32, 10>();
     }
 
     #[test]
     fn vec_ops_f64() {
-        vec_ops::<f64>();
+        vec_ops::<f64, 10>();
+    }
+
+    // Check for some nice index, or off-by-one errors.
+    #[test]
+    fn vec_ops_f32_large() {
+        vec_ops::<f32, 100>();
     }
 }
