@@ -52,6 +52,16 @@ mod matrix_tests {
 
         let mut one = matrix_new!(loader.clone(), T, 1, VAL_LEN);
         let mut two = matrix_new!(loader.clone(), T, 1, VAL_LEN);
+        let scalar = Matrix {
+            loader: loader.clone(),
+            A: T::default(),
+        };
+
+        let mut result = matrix_new!(loader.clone(), T, 1, VAL_LEN);
+        let mut scalar_result = Matrix {
+            loader: loader.clone(),
+            A: T::default(),
+        };
 
         let mut rng = oorandom::Rand32::new(10);
 
@@ -65,7 +75,7 @@ mod matrix_tests {
 
         macro_rules! normal_op_test {
             ($op: ident, $name: ident) => {
-                let result = &one.$op(&two);
+                result = one.$op(&two);
                 info!("{}:\t{:?}", std::stringify!($name), result);
 
                 for i in 0..result.A.len() {
@@ -78,45 +88,73 @@ mod matrix_tests {
         info!("1: \t{:?}", one);
         info!("2: \t{:?}", two);
 
-        // Check +
+        // Check Matrix<Vec<T>> + Matrix<Vec<T>>
         normal_op_test!(add, Add);
 
-        let mut result = Matrix {
-            loader: loader.clone(),
-            A: T::default(),
-        };
-        result += &one;
+        // Check Matrix<T> += Matrix<Vec<T>>
+        scalar_result += &one;
 
-        let mut sec_result = one.A[0];
+        let mut temp = one.A[0];
         for i in 1..one.A.len() {
-            sec_result += one.A[i];
+            temp += one.A[i];
         }
-        assert_eq!(result.A, sec_result);
+        assert_eq!(scalar_result.A, temp);
 
-        // Check -
+        // Check Matrix<Vec<T>> = Matrix<Vec<T>> + Matrix<T>
+        result = &one + &scalar;
+        for i in 0..one.A.len() {
+            assert_eq!(result.A[i], one.A[i] + scalar.A);
+        }
+
+        // Check Matrix<Vec<T>> - Matrix<Vec<T>>
         normal_op_test!(sub, Sub);
 
-        // Check *
+        // Check Matrix<Vec<T>> = Matrix<Vec<T>> - Matrix<T>
+        result = &one - &scalar;
+        for i in 0..one.A.len() {
+            assert_eq!(result.A[i], one.A[i] - scalar.A);
+        }
+
+        // Check Matrix<Vec<T>> * Matrix<Vec<T>>
         normal_op_test!(mul, Mul);
 
-        let mut result = Matrix {
-            loader: loader.clone(),
-            A: T::default(),
-        };
-        result *= &one;
-
-        let mut sec_result = one.A[0];
-        for i in 1..one.A.len() {
-            sec_result *= one.A[i];
+        // Check Matrix<Vec<T>> = Matrix<Vec<T>> * Matrix<T>
+        result = &one * &scalar;
+        for i in 0..one.A.len() {
+            assert_eq!(result.A[i], one.A[i] * scalar.A);
         }
-        assert_eq!(result.A, sec_result);
 
-        // Check /
-        let result = &one / &two;
+        // Check Matrix<T> *= Matrix<Vec<T>>
+        scalar_result *= &one;
+
+        let mut temp = one.A[0];
+        for i in 1..one.A.len() {
+            temp *= one.A[i];
+        }
+        assert_eq!(scalar_result.A, temp);
+
+        // Check Matrix<Vec<T>> / Matrix<Vec<T>>
+        result = &one / &two;
         info!("Div:\t{:?}", result);
 
         for i in 0..result.A.len() {
             let quotient: f64 = (one.A[i] / two.A[i]).into();
+            let out = result.A[i].into();
+
+            if quotient != out {
+                warn!(
+                    "[{}] Rounding mode differs!\nCPU: {:b}\nGPU: {:b}",
+                    i,
+                    quotient.to_bits(),
+                    out.to_bits()
+                );
+            }
+        }
+
+        // Check Matrix<Vec<T>> = Matrix<Vec<T>> / Matrix<T>
+        result = &one / &scalar;
+        for i in 0..one.A.len() {
+            let quotient: f64 = (one.A[i] / scalar.A).into();
             let out = result.A[i].into();
 
             if quotient != out {
