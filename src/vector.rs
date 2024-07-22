@@ -7,7 +7,7 @@ use crate::Matrix;
 
 pub mod test;
 
-impl<T> Debug for Matrix<'_, Vec<T>>
+impl<T> Debug for Matrix<Vec<T>>
 where
     T: std::fmt::Debug,
 {
@@ -20,12 +20,11 @@ where
     }
 }
 
-impl<'r, 'l, T> Matrix<'r, Vec<T>>
+impl<T> Matrix<Vec<T>>
 where
     T: ocl::OclPrm,
-    'r: 'l,
 {
-    fn basic_op(&self, rhs: &'r Matrix<Vec<T>>, kernel_name: &str) -> Matrix<'l, Vec<T>> {
+    fn basic_op(&self, rhs: &Matrix<Vec<T>>, kernel_name: &str) -> Matrix<Vec<T>> {
         // Check for common invocation errors.
         debug_assert!(
             self.A.len() == rhs.A.len(),
@@ -87,7 +86,7 @@ where
 
         // Package the results.
         let mut result = Matrix {
-            loader: self.loader,
+            loader: self.loader.clone(),
             A: vec![T::default(); buffer_size],
         };
 
@@ -100,7 +99,7 @@ where
         result
     }
 
-    fn down_op(&self, kernel_name: &str) -> Matrix<'_, T> {
+    fn down_op(&self, kernel_name: &str) -> Matrix<T> {
         // Check for common invocation errors.
         debug_assert!(self.A.len() != 0, "RHS is empty");
 
@@ -144,46 +143,68 @@ where
             .expect("read from out");
 
         Matrix {
-            loader: &self.loader,
+            loader: self.loader.clone(),
             A: result[0],
         }
     }
 }
 
 // Implementation of Matrix<Vec<T>> = Matrix<Vec<T>> @ Matrix<Vec<T>>
-macro_rules! oper_impl {
+macro_rules! normal_oper_impl {
     ($op: ident, $kernel: ident) => {
-        impl<'a, T> ops::$op<&'a Matrix<'_, Vec<T>>> for &'a Matrix<'_, Vec<T>>
+        impl<T> ops::$op<&Matrix<Vec<T>>> for &Matrix<Vec<T>>
         where
             T: ocl::OclPrm,
         {
-            type Output = Matrix<'a, Vec<T>>;
+            type Output = Matrix<Vec<T>>;
 
-            fn $kernel(self, rhs: &'a Matrix<Vec<T>>) -> Self::Output {
+            fn $kernel(self, rhs: &Matrix<Vec<T>>) -> Self::Output {
                 self.basic_op(rhs, std::stringify!($kernel))
             }
         }
     };
 }
 
-oper_impl!(Add, add);
-oper_impl!(Sub, sub);
-oper_impl!(Mul, mul);
-oper_impl!(Div, div);
+normal_oper_impl!(Add, add);
+normal_oper_impl!(Sub, sub);
+normal_oper_impl!(Mul, mul);
+normal_oper_impl!(Div, div);
 
-// Implementation of Matrix<T> @= Matrix<Vec<T>>
-macro_rules! assign_down_impl {
-    ($op: ident, $opfn: ident, $kernel: ident) => {
-        impl<'a, T> ops::$op<&'a Matrix<'_, Vec<T>>> for Matrix<'a, T>
+// Implementation of Matrix<Vec<T>> = Matrix<Vec<T>> @ Matrix<T>
+macro_rules! scalar_oper_impl {
+    ($op: ident, $kernel: ident) => {
+        impl<T> ops::$op<&Matrix<T>> for &Matrix<Vec<T>>
         where
             T: ocl::OclPrm,
         {
-            fn $opfn(&mut self, rhs: &'a Matrix<'_, Vec<T>>) {
+            type Output = Matrix<Vec<T>>;
+
+            fn $kernel(self, rhs: &Matrix<T>) -> Self::Output {
+                let temp = rhs.fill_dim(self.A.len());
+                self.basic_op(&temp, std::stringify!($kernel))
+            }
+        }
+    };
+}
+
+scalar_oper_impl!(Add, add);
+scalar_oper_impl!(Sub, sub);
+scalar_oper_impl!(Mul, mul);
+scalar_oper_impl!(Div, div);
+
+// Implementation of Matrix<T> @= Matrix<Vec<T>>
+macro_rules! assign_down_scalar_impl {
+    ($op: ident, $opfn: ident, $kernel: ident) => {
+        impl<T> ops::$op<&Matrix<Vec<T>>> for Matrix<T>
+        where
+            T: ocl::OclPrm,
+        {
+            fn $opfn(&mut self, rhs: &Matrix<Vec<T>>) {
                 *self = rhs.down_op(std::stringify!($kernel));
             }
         }
     };
 }
 
-assign_down_impl!(AddAssign, add_assign, add_down);
-assign_down_impl!(MulAssign, mul_assign, mul_down);
+assign_down_scalar_impl!(AddAssign, add_assign, add_down);
+assign_down_scalar_impl!(MulAssign, mul_assign, mul_down);

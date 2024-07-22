@@ -6,6 +6,7 @@ mod matrix_tests {
     use simplelog::{ColorChoice, Config, LevelFilter, TermLogger, TerminalMode};
     use std::ops::*;
     use std::path::PathBuf;
+    use std::sync::Arc;
     use std::time::Instant;
 
     use crate::loader::KernelLoader;
@@ -45,10 +46,12 @@ mod matrix_tests {
         setup();
         let start = Instant::now();
 
-        let loader = KernelLoader::new::<T>(&PathBuf::from("./kernels"), false, false, 16).unwrap();
+        let loader = Arc::new(
+            KernelLoader::new::<T>(&PathBuf::from("./kernels"), false, false, 16).unwrap(),
+        );
 
-        let mut one = matrix_new!(&loader, T, 1, VAL_LEN);
-        let mut two = matrix_new!(&loader, T, 1, VAL_LEN);
+        let mut one = matrix_new!(loader.clone(), T, 1, VAL_LEN);
+        let mut two = matrix_new!(loader.clone(), T, 1, VAL_LEN);
 
         let mut rng = oorandom::Rand32::new(10);
 
@@ -79,7 +82,7 @@ mod matrix_tests {
         normal_op_test!(add, Add);
 
         let mut result = Matrix {
-            loader: &loader,
+            loader: loader.clone(),
             A: T::default(),
         };
         result += &one;
@@ -97,7 +100,7 @@ mod matrix_tests {
         normal_op_test!(mul, Mul);
 
         let mut result = Matrix {
-            loader: &loader,
+            loader: loader.clone(),
             A: T::default(),
         };
         result *= &one;
