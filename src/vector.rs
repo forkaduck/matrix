@@ -171,25 +171,6 @@ oper_impl!(Sub, sub);
 oper_impl!(Mul, mul);
 oper_impl!(Div, div);
 
-// Implementation of Matrix<Vec<T>> @= Matrix<Vec<T>>
-macro_rules! assign_oper_impl {
-    ($op: ident, $opfn: ident, $kernel: ident) => {
-        impl<'a, T> ops::$op<&'a Matrix<'_, Vec<T>>> for Matrix<'a, Vec<T>>
-        where
-            T: ocl::OclPrm,
-        {
-            fn $opfn(&mut self, rhs: &'a Matrix<'_, Vec<T>>) {
-                *self = self.basic_op(rhs, std::stringify!($kernel));
-            }
-        }
-    };
-}
-
-assign_oper_impl!(AddAssign, add_assign, add);
-assign_oper_impl!(SubAssign, sub_assign, sub);
-assign_oper_impl!(MulAssign, mul_assign, mul);
-assign_oper_impl!(DivAssign, div_assign, div);
-
 // Implementation of Matrix<T> @= Matrix<Vec<T>>
 macro_rules! assign_down_impl {
     ($op: ident, $opfn: ident, $kernel: ident) => {
