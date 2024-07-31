@@ -20,23 +20,7 @@
 #define CAT_I(a, b) a##b
 #define CAT(a, b) CAT_I(a, b)
 
-#ifndef HELPERS
-#define HELPERS
-
-inline void print_array(__global TYPE_T *array, SIZE_T len)
-{
-#ifdef DEBUG
-	if (get_local_id(0) == 0) {
-		printf("[");
-		for (SIZE_T i = 0; i < len; i++) {
-			printf("%.1f, ", array[i]);
-		}
-
-		printf("]\n");
-	}
-#endif
-}
-#endif
+#include "helpers.h"
 
 __kernel void KERNEL_NAME(__constant TYPE_T *rhs, SIZE_T w_rhs,
 			  __constant TYPE_T *lhs, SIZE_T w_lhs,
