@@ -26,24 +26,19 @@ __kernel void KERNEL_NAME(__constant TYPE_T *rhs, SIZE_T w_rhs,
 			  __constant TYPE_T *lhs, SIZE_T w_lhs,
 			  __global TYPE_T *output)
 {
-	const SIZE_T local_id = get_local_id(0);
-	const SIZE_T local_size = get_local_size(0);
-
-	for (SIZE_T i = local_id; i < min(w_rhs, w_lhs); i += local_size) {
+	for (SIZE_T i = get_local_id(0); i < min(w_rhs, w_lhs);
+	     i += get_local_size(0)) {
 		output[i] = lhs[i] OPERATOR rhs[i];
 	}
 }
 
 __kernel void CAT(KERNEL_NAME, _down)(__global TYPE_T *rhs, SIZE_T w_rhs)
 {
-	const SIZE_T local_id = get_local_id(0);
-	const SIZE_T local_size = get_local_size(0);
-
 	for (SIZE_T k = 0; k < (SIZE_T)native_sqrt(w_rhs) + 1; k++) {
 		SIZE_T correction = 2 << k;
 
-		for (SIZE_T ix = correction * local_id; ix < w_rhs - 1;
-		     ix += correction * local_size) {
+		for (SIZE_T ix = correction * get_local_id(0); ix < w_rhs - 1;
+		     ix += correction * get_local_size(0)) {
 			SIZE_T io = 0;
 
 			if (correction == 2) {
