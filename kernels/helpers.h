@@ -1,4 +1,25 @@
 
+// Define some fallback macros, so that clang can do type checks.
+#ifndef TYPE_T
+#warning "Missing float type!"
+#define TYPE_T float
+#endif
+
+#define SIZE_T unsigned long
+
+#ifndef OPERATOR
+#warning "Missing operator!"
+#define OPERATOR +
+#endif
+
+#ifndef KERNEL_NAME
+#warning "Missing kernel name!"
+#define KERNEL_NAME add
+#endif
+
+#define CAT_I(a, b) a##b
+#define CAT(a, b) CAT_I(a, b)
+
 #ifndef HELPERS
 #define HELPERS
 
