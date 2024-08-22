@@ -209,8 +209,8 @@ impl KernelLoader {
     /// sometimes.
     ///
     /// * `kernel_dir` - The directory of all OpenCL C files (.cl).
-    /// * `unsafe_fast_math` - Enables -cl-finite-math-only and -cl-unsafe-math-optimizations,
-    /// which is a bit faster.
+    /// * `unsafe_fast_math` - Enables -cl-finite-math-only, -cl-unsafe-math-optimizations and
+    /// -cl-mad-enable which is a bit faster but generally rounded and no bounds checks.
     /// * `kernel_debug` - Enables all debug statements in all kernels.
     /// * `threads` - The amount of threads that will use this context. (Indirectly scales work
     /// size)
@@ -309,7 +309,8 @@ impl KernelLoader {
         );
 
         if unsafe_fast_math {
-            prog_build.cmplr_opt("-cl-finite-math-only -cl-unsafe-math-optimizations");
+            prog_build
+                .cmplr_opt("-cl-finite-math-only -cl-unsafe-math-optimizations -cl-mad-enable");
         }
 
         if kernel_debug {
