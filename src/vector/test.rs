@@ -52,10 +52,8 @@ mod matrix_tests {
 
         let mut one = matrix_new!(loader.clone(), T, 1, VAL_LEN);
         let mut two = matrix_new!(loader.clone(), T, 1, VAL_LEN);
-        let scalar = Matrix {
-            loader: Some(loader.clone()),
-            A: T::default(),
-        };
+
+        let scalar: T = 10u8.into();
 
         let mut result = matrix_new!(loader.clone(), T, 1, VAL_LEN);
         let mut scalar_result = Matrix {
@@ -100,28 +98,28 @@ mod matrix_tests {
         }
         assert_eq!(scalar_result.A, temp);
 
-        // Check Matrix<Vec<T>> = Matrix<Vec<T>> + Matrix<T>
-        result = &one + &scalar;
+        // Check Matrix<Vec<T>> = Matrix<Vec<T>> + T
+        result = &one + scalar;
         for i in 0..one.A.len() {
-            assert_eq!(result.A[i], one.A[i] + scalar.A);
+            assert_eq!(result.A[i], one.A[i] + scalar);
         }
 
         // Check Matrix<Vec<T>> - Matrix<Vec<T>>
         normal_op_test!(sub, Sub);
 
-        // Check Matrix<Vec<T>> = Matrix<Vec<T>> - Matrix<T>
-        result = &one - &scalar;
+        // Check Matrix<Vec<T>> = Matrix<Vec<T>> - T
+        result = &one - scalar;
         for i in 0..one.A.len() {
-            assert_eq!(result.A[i], one.A[i] - scalar.A);
+            assert_eq!(result.A[i], one.A[i] - scalar);
         }
 
         // Check Matrix<Vec<T>> * Matrix<Vec<T>>
         normal_op_test!(mul, Mul);
 
-        // Check Matrix<Vec<T>> = Matrix<Vec<T>> * Matrix<T>
-        result = &one * &scalar;
+        // Check Matrix<Vec<T>> = Matrix<Vec<T>> * T
+        result = &one * scalar;
         for i in 0..one.A.len() {
-            assert_eq!(result.A[i], one.A[i] * scalar.A);
+            assert_eq!(result.A[i], one.A[i] * scalar);
         }
 
         // Check Matrix<T> *= Matrix<Vec<T>>
@@ -151,10 +149,10 @@ mod matrix_tests {
             }
         }
 
-        // Check Matrix<Vec<T>> = Matrix<Vec<T>> / Matrix<T>
-        result = &one / &scalar;
+        // Check Matrix<Vec<T>> = Matrix<Vec<T>> / T
+        result = &one / scalar;
         for i in 0..one.A.len() {
-            let quotient: f64 = (one.A[i] / scalar.A).into();
+            let quotient: f64 = (one.A[i] / scalar).into();
             let out = result.A[i].into();
 
             if quotient != out {

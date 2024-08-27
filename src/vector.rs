@@ -174,17 +174,21 @@ normal_oper_impl!(Sub, sub);
 normal_oper_impl!(Mul, mul);
 normal_oper_impl!(Div, div);
 
-// Implementation of Matrix<Vec<T>> = Matrix<Vec<T>> @ Matrix<T>
+// Implementation of Matrix<Vec<T>> = Matrix<Vec<T>> @ T
 macro_rules! scalar_oper_impl {
     ($op: ident, $kernel: ident) => {
-        impl<T> ops::$op<&Matrix<T>> for &Matrix<Vec<T>>
+        impl<T> ops::$op<T> for &Matrix<Vec<T>>
         where
             T: ocl::OclPrm,
         {
             type Output = Matrix<Vec<T>>;
 
-            fn $kernel(self, rhs: &Matrix<T>) -> Self::Output {
-                let temp = rhs.fill_dim(self.A.len());
+            fn $kernel(self, rhs: T) -> Self::Output {
+                let temp = Matrix {
+                    loader: self.loader.clone(),
+                    A: vec![rhs; self.A.len()],
+                };
+
                 self.basic_op(&temp, std::stringify!($kernel))
             }
         }
