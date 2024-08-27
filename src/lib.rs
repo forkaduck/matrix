@@ -10,7 +10,7 @@ use std::sync::Arc;
 #[allow(non_snake_case)]
 #[derive(Clone)]
 pub struct Matrix<T> {
-    pub loader: Arc<crate::loader::KernelLoader>,
+    pub loader: Option<Arc<crate::loader::KernelLoader>>,
     pub A: T,
 }
 

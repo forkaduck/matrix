@@ -80,7 +80,7 @@ pub fn matrix_new(input: TokenStream) -> TokenStream {
         .expect("Failed to parse function TokenStream");
 
     let gen = quote! {
-        Matrix { A: Vec::<#inner_data>::#function, loader:#loader}
+        Matrix { A: Vec::<#inner_data>::#function, loader:Some(#loader)}
     };
     gen.into()
 }

@@ -53,13 +53,13 @@ mod matrix_tests {
         let mut one = matrix_new!(loader.clone(), T, 1, VAL_LEN);
         let mut two = matrix_new!(loader.clone(), T, 1, VAL_LEN);
         let scalar = Matrix {
-            loader: loader.clone(),
+            loader: Some(loader.clone()),
             A: T::default(),
         };
 
         let mut result = matrix_new!(loader.clone(), T, 1, VAL_LEN);
         let mut scalar_result = Matrix {
-            loader: loader.clone(),
+            loader: Some(loader.clone()),
             A: T::default(),
         };
 

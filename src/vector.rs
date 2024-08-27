@@ -1,3 +1,4 @@
+use std::convert::From;
 use std::fmt::Debug;
 use std::ops;
 
@@ -36,23 +37,24 @@ where
         debug_assert!(rhs.A.len() != 0, "RHS is empty");
 
         let buffer_size = self.A.len();
+        let loader = self.loader.clone().expect("Self loader not initalized!");
 
         // Create all operator buffers.
         let buffer_rhs = Buffer::<T>::builder()
             .len(buffer_size)
-            .queue(self.loader.queue.clone())
+            .queue(loader.queue.clone())
             .build()
             .expect("buffer rhs");
 
         let buffer_lhs = Buffer::<T>::builder()
             .len(buffer_size)
-            .queue(self.loader.queue.clone())
+            .queue(loader.queue.clone())
             .build()
             .expect("buffer lhs");
 
         let buffer_output = Buffer::<T>::builder()
             .len(buffer_size)
-            .queue(self.loader.queue.clone())
+            .queue(loader.queue.clone())
             .build()
             .expect("buffer out");
 
@@ -62,11 +64,11 @@ where
 
         // Run the kernel.
         let kernel = match Kernel::builder()
-            .program(&self.loader.program)
+            .program(&loader.program)
             .name(kernel_name)
-            .queue(self.loader.queue.clone())
-            .global_work_size(self.loader.global_work_size)
-            .local_work_size(self.loader.local_work_size)
+            .queue(loader.queue.clone())
+            .global_work_size(loader.global_work_size)
+            .local_work_size(loader.local_work_size)
             .arg(&buffer_rhs)
             .arg(buffer_rhs.len() as u64)
             .arg(&buffer_lhs)
@@ -103,10 +105,12 @@ where
         // Check for common invocation errors.
         debug_assert!(self.A.len() != 0, "RHS is empty");
 
+        let loader = self.loader.clone().expect("Self loader not initalized!");
+
         // Create buffers and initialize them.
         let buffer_rhs = Buffer::<T>::builder()
             .len(self.A.len())
-            .queue(self.loader.queue.clone())
+            .queue(loader.queue.clone())
             .build()
             .expect("buffer rhs");
 
@@ -114,11 +118,11 @@ where
 
         // Build and run the kernel.
         let kernel = match Kernel::builder()
-            .program(&self.loader.program)
+            .program(&loader.program)
             .name(kernel_name)
-            .queue(self.loader.queue.clone())
-            .global_work_size(self.loader.global_work_size)
-            .local_work_size(self.loader.local_work_size)
+            .queue(loader.queue.clone())
+            .global_work_size(loader.global_work_size)
+            .local_work_size(loader.local_work_size)
             .arg(&buffer_rhs)
             .arg(buffer_rhs.len() as u64)
             .build()
