@@ -39,7 +39,9 @@ pub fn matrix_new(input: TokenStream) -> TokenStream {
     // Parse out the amount of dimensions.
     let t_dimensions = tokens
         .next()
-        .expect(&(syntax[0].to_owned() + syntax[1] + syntax[2] + " <- Dimension not found!"))
+        .expect(&(syntax[0].to_owned() + syntax[1] + syntax[2] + " <- Dimension not found!"));
+
+    let t_dimensions = t_dimensions
         .parse::<usize>()
         .expect(&(syntax[0].to_owned() + syntax[1] + syntax[2] + " <- Dimension is not a usize!"));
 
