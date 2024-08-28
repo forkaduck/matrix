@@ -200,6 +200,32 @@ scalar_oper_impl!(Sub, sub);
 scalar_oper_impl!(Mul, mul);
 scalar_oper_impl!(Div, div);
 
+// Implementation of Matrix<Vec<T>> = Matrix<Vec<T>> @ [T]
+macro_rules! normal_oper_ext_impl {
+    ($op: ident, $kernel: ident) => {
+        impl<T> ops::$op<&[T]> for &Matrix<Vec<T>>
+        where
+            T: ocl::OclPrm,
+        {
+            type Output = Matrix<Vec<T>>;
+
+            fn $kernel(self, rhs: &[T]) -> Self::Output {
+                let temp = Matrix {
+                    loader: self.loader.clone(),
+                    A: Vec::from(rhs),
+                };
+
+                self.basic_op(&temp, std::stringify!($kernel))
+            }
+        }
+    };
+}
+
+normal_oper_ext_impl!(Add, add);
+normal_oper_ext_impl!(Sub, sub);
+normal_oper_ext_impl!(Mul, mul);
+normal_oper_ext_impl!(Div, div);
+
 // Implementation of Matrix<T> @= Matrix<Vec<T>>
 macro_rules! assign_down_scalar_impl {
     ($op: ident, $opfn: ident, $kernel: ident) => {
