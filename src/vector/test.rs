@@ -13,6 +13,8 @@ mod matrix_tests {
     use crate::Matrix;
     use matrix_macro::matrix_new;
 
+    const TXTSHIFT: &str = "\x1b[100G";
+
     pub fn timer_end(start: Instant) {
         println!("Time elapsed: {}s", (Instant::now() - start).as_secs_f64());
     }
@@ -50,13 +52,13 @@ mod matrix_tests {
             KernelLoader::new::<T>(&PathBuf::from("./kernels"), false, false, 16).unwrap(),
         );
 
-        let mut one = matrix_new!(loader.clone(), T, 1, VAL_LEN);
-        let mut two = matrix_new!(loader.clone(), T, 1, VAL_LEN);
+        let mut lhs = matrix_new!(loader.clone(), T, 1, VAL_LEN);
+        let mut rhs = matrix_new!(loader.clone(), T, 1, VAL_LEN);
 
-        let scalar: T = 10u8.into();
+        let rhs_scalar: T = 10u8.into();
 
         let mut result = matrix_new!(loader.clone(), T, 1, VAL_LEN);
-        let mut scalar_result = Matrix {
+        let mut result_scalar = Matrix {
             loader: Some(loader.clone()),
             A: T::default(),
         };
@@ -65,94 +67,105 @@ mod matrix_tests {
 
         for _ in 0..VAL_LEN {
             let temp = (rng.rand_u32() as u8) % 10;
-            one.A.push(temp.into());
+            lhs.A.push(temp.into());
 
             let temp = (rng.rand_u32() as u8) % 10;
-            two.A.push(temp.into());
+            rhs.A.push(temp.into());
         }
 
         macro_rules! normal_op_test {
-            ($op: ident, $name: ident) => {
-                result = one.$op(&two);
-                info!("{}:\t{:?}", std::stringify!($name), result);
+            ($op: ident, $name: literal, $rhs: expr, $chill: expr) => {
+                result = lhs.$op(&rhs);
+                info!("{:?}{}:{}", result, TXTSHIFT, $name);
 
                 for i in 0..result.A.len() {
-                    assert_eq!(one.A[i].$op(two.A[i]), result.A[i]);
+                    if $chill == true {
+                        let cp_out: f64 = (lhs.A[i].$op(rhs.A[i])).into();
+                        let gp_out = result.A[i].into();
+
+                        if cp_out != gp_out {
+                            warn!(
+                                "[{}] Rounding mode differs!\nCPU: {:b}\nGPU: {:b}",
+                                i,
+                                cp_out.to_bits(),
+                                gp_out.to_bits()
+                            );
+                        }
+                    } else {
+                        assert_eq!(lhs.A[i].$op(rhs.A[i]), result.A[i]);
+                    }
                 }
             };
         }
 
         info!("Input:");
-        info!("1: \t{:?}", one);
-        info!("2: \t{:?}", two);
+        info!("{:?}{}:lhs", lhs, TXTSHIFT);
+        info!("{:?}{}:rhs", rhs, TXTSHIFT);
 
-        // Check Matrix<Vec<T>> + Matrix<Vec<T>>
-        normal_op_test!(add, Add);
+        normal_op_test!(add, "Matrix<Vec<T>> + Matrix<Vec<T>>", rhs, false);
+        normal_op_test!(add, "Matrix<Vec<T>> + [T]", rhs.A[..], false);
 
-        // Check Matrix<T> += Matrix<Vec<T>>
-        scalar_result += &one;
+        result_scalar += &lhs;
 
-        let mut temp = one.A[0];
-        for i in 1..one.A.len() {
-            temp += one.A[i];
+        let mut temp = lhs.A[0];
+        for i in 1..lhs.A.len() {
+            temp += lhs.A[i];
         }
-        assert_eq!(scalar_result.A, temp);
+        info!("{:?}{}:Matrix<T> += Matrix<Vec<T>>", result, TXTSHIFT);
+        assert_eq!(result_scalar.A, temp);
 
-        // Check Matrix<Vec<T>> = Matrix<Vec<T>> + T
-        result = &one + scalar;
-        for i in 0..one.A.len() {
-            assert_eq!(result.A[i], one.A[i] + scalar);
-        }
-
-        // Check Matrix<Vec<T>> - Matrix<Vec<T>>
-        normal_op_test!(sub, Sub);
-
-        // Check Matrix<Vec<T>> = Matrix<Vec<T>> - T
-        result = &one - scalar;
-        for i in 0..one.A.len() {
-            assert_eq!(result.A[i], one.A[i] - scalar);
+        result = &lhs + rhs_scalar;
+        info!(
+            "{:?}{}:Matrix<Vec<T>> = Matrix<Vec<T>> + T",
+            result, TXTSHIFT
+        );
+        for i in 0..lhs.A.len() {
+            assert_eq!(result.A[i], lhs.A[i] + rhs_scalar);
         }
 
-        // Check Matrix<Vec<T>> * Matrix<Vec<T>>
-        normal_op_test!(mul, Mul);
+        normal_op_test!(sub, "Matrix<Vec<T>> - Matrix<Vec<T>>", rhs, false);
+        normal_op_test!(sub, "Matrix<Vec<T>> - [T]", rhs.A[..], false);
 
-        // Check Matrix<Vec<T>> = Matrix<Vec<T>> * T
-        result = &one * scalar;
-        for i in 0..one.A.len() {
-            assert_eq!(result.A[i], one.A[i] * scalar);
+        result = &lhs - rhs_scalar;
+        info!(
+            "{:?}{}:Matrix<Vec<T>> = Matrix<Vec<T>> - T",
+            result, TXTSHIFT
+        );
+        for i in 0..lhs.A.len() {
+            assert_eq!(result.A[i], lhs.A[i] - rhs_scalar);
         }
 
-        // Check Matrix<T> *= Matrix<Vec<T>>
-        scalar_result *= &one;
+        normal_op_test!(mul, "Matrix<Vec<T>> * Matrix<Vec<T>>", rhs, false);
+        normal_op_test!(mul, "Matrix<Vec<T>> * [T]", rhs.A[..], false);
 
-        let mut temp = one.A[0];
-        for i in 1..one.A.len() {
-            temp *= one.A[i];
-        }
-        assert_eq!(scalar_result.A, temp);
-
-        // Check Matrix<Vec<T>> / Matrix<Vec<T>>
-        result = &one / &two;
-        info!("Div:\t{:?}", result);
-
-        for i in 0..result.A.len() {
-            let quotient: f64 = (one.A[i] / two.A[i]).into();
-            let out = result.A[i].into();
-
-            if quotient != out {
-                warn!(
-                    "[{}] Rounding mode differs!\nCPU: {:b}\nGPU: {:b}",
-                    i,
-                    quotient.to_bits(),
-                    out.to_bits()
-                );
-            }
+        result = &lhs * rhs_scalar;
+        info!(
+            "{:?}{}:Matrix<Vec<T>> = Matrix<Vec<T>> * T",
+            result, TXTSHIFT
+        );
+        for i in 0..lhs.A.len() {
+            assert_eq!(result.A[i], lhs.A[i] * rhs_scalar);
         }
 
-        // Check Matrix<Vec<T>> = Matrix<Vec<T>> / T
-        result = &one / scalar;
-        for i in 0..one.A.len() {
-            let quotient: f64 = (one.A[i] / scalar).into();
+        result_scalar *= &lhs;
+
+        let mut temp = lhs.A[0];
+        for i in 1..lhs.A.len() {
+            temp *= lhs.A[i];
+        }
+        info!("{:?}{}:Matrix<T> *= Matrix<Vec<T>>", result, TXTSHIFT);
+        assert_eq!(result_scalar.A, temp);
+
+        normal_op_test!(div, "Matrix<Vec<T>> / Matrix<Vec<T>>", rhs, true);
+        normal_op_test!(div, "Matrix<Vec<T>> / [T]", rhs.A[..], true);
+
+        result = &lhs / rhs_scalar;
+        info!(
+            "{:?}{}:Matrix<Vec<T>> = Matrix<Vec<T>> / T",
+            result, TXTSHIFT
+        );
+        for i in 0..lhs.A.len() {
+            let quotient: f64 = (lhs.A[i] / rhs_scalar).into();
             let out = result.A[i].into();
 
             if quotient != out {
